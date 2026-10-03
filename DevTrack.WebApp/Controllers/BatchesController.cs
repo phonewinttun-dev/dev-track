@@ -1,3 +1,5 @@
+using DevTrack.WebApp.Auth;
+using DevTrack.Shared.Security;
 using DevTrack.Domain.Features.Batches;
 using DevTrack.Domain.Features.Batches.Models;
 using DevTrack.Shared;
@@ -14,18 +16,21 @@ public class BatchesController : Controller
         _batchService = batchService;
     }
 
+    [Permission(Permissions.BatchesRead)]
     public async Task<IActionResult> Index(int pageAt = 1)
     {
         var result = await _batchService.GetBatchesAsync(new PaginationRequest { PageNumber = pageAt });
         return View(result);
     }
 
+    [Permission(Permissions.BatchesWrite)]
     public IActionResult Create()
     {
         return View(new BatchRequest { StartDate = DateOnly.FromDateTime(DateTime.Today), EndDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(2)) });
     }
 
     [HttpPost]
+    [Permission(Permissions.BatchesWrite)]
     public async Task<IActionResult> Create(BatchRequest request)
     {
         var result = await _batchService.CreateBatchAsync(request);
@@ -37,6 +42,7 @@ public class BatchesController : Controller
         return View(request);
     }
 
+    [Permission(Permissions.BatchesWrite)]
     public async Task<IActionResult> ManageDevelopers(int id)
     {
         var batchResult = await _batchService.GetBatchByIdAsync(id);
@@ -49,6 +55,7 @@ public class BatchesController : Controller
     }
 
     [HttpPost]
+    [Permission(Permissions.BatchesWrite)]
     public async Task<IActionResult> ManageDevelopers(int id, List<int> selectedDeveloperIds)
     {
         var result = await _batchService.UpdateBatchAssignmentsAsync(id, selectedDeveloperIds);
@@ -56,7 +63,7 @@ public class BatchesController : Controller
         {
             return RedirectToAction(nameof(Index));
         }
-        
+
         ModelState.AddModelError("", result.Message);
         return await ManageDevelopers(id);
     }

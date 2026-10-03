@@ -1,3 +1,6 @@
+using DevTrack.Database.Entities;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.RegularExpressions;
 using DevTrack.WebApp;
@@ -63,6 +66,21 @@ public class WebAppAuthenticationTests
         Assert.Contains(cookies, cookie => cookie.Contains(".AspNetCore.Cookies") && cookie.Contains("expires=Thu, 01 Jan 1970"));
     }
 
+    [Fact]
+    public async Task ExistingCookie_IsDenied_WhenPermissionIsRevoked()
+    {
+        await using var factory = CreateFactory();
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await LoginAsync(client);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DevTrackDbContext>();
+        db.RolePermissions.RemoveRange(await db.RolePermissions.Where(x => x.Permission.PermissionName == "developers.write").ToListAsync());
+        await db.SaveChangesAsync();
+        var response = await client.GetAsync("/Developers/Create");
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains("/Account/Denied", response.Headers.Location!.OriginalString);
+    }
+
     private static WebApplicationFactory<WebAppAssemblyMarker> CreateFactory()
         => new WebApplicationFactory<WebAppAssemblyMarker>()
             .WithWebHostBuilder(builder =>
@@ -70,6 +88,7 @@ public class WebAppAuthenticationTests
                 builder.ConfigureAppConfiguration((_, config) =>
                 {
                     config.AddInMemoryCollection(AuthTestSettings.WebAppConfiguration);
+                    config.AddInMemoryCollection(new Dictionary<string, string?> { ["DatabaseName"] = Guid.NewGuid().ToString() });
                 });
             });
 

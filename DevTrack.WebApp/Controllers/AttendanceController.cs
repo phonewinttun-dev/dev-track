@@ -1,3 +1,5 @@
+using DevTrack.WebApp.Auth;
+using DevTrack.Shared.Security;
 using DevTrack.Domain.Features.Training;
 using DevTrack.Domain.Features.Batches;
 using DevTrack.Shared;
@@ -16,6 +18,7 @@ public class AttendanceController : Controller
         _batchService = batchService;
     }
 
+    [Permission(Permissions.TrainingRead)]
     public async Task<IActionResult> Index(int? batchId, int pageAt = 1)
     {
         // For the dropdown, we want a larger list or all batches.
@@ -32,6 +35,7 @@ public class AttendanceController : Controller
         return View(null);
     }
 
+    [Permission(Permissions.TrainingRead)]
     public async Task<IActionResult> Schedule(int batchId, int pageAt = 1)
     {
         var scheduleResult = await _trainingService.GetScheduleAsync(batchId, new PaginationRequest { PageNumber = pageAt, PageSize = 10 });
@@ -41,6 +45,7 @@ public class AttendanceController : Controller
         return View(scheduleResult);
     }
 
+    [Permission(Permissions.TrainingWrite)]
     public async Task<IActionResult> Mark(int batchId, string? date)
     {
         DateOnly targetDate;
@@ -65,6 +70,7 @@ public class AttendanceController : Controller
     }
 
     [HttpPost]
+    [Permission(Permissions.TrainingWrite)]
     public async Task<IActionResult> Mark(DevTrack.Domain.Features.Training.Models.BulkAttendanceRequest request)
     {
         var result = await _trainingService.MarkBulkAttendanceAsync(request);
@@ -77,6 +83,7 @@ public class AttendanceController : Controller
         return await Mark(request.BatchId, request.TrainingDate.ToString("yyyy-MM-dd"));
     }
 
+    [Permission(Permissions.TrainingRead)]
     public async Task<IActionResult> Download(int batchId)
     {
         var result = await _trainingService.GetFullAttendanceSummaryAsync(batchId);

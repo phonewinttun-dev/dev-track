@@ -1,3 +1,5 @@
+using DevTrack.WebApp.Auth;
+using DevTrack.Shared.Security;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using DevTrack.Domain.Features.Dashboard;
@@ -16,12 +18,14 @@ public class HomeController : Controller
         _dashboardService = dashboardService;
     }
 
+    [Permission(Permissions.DashboardRead)]
     public async Task<IActionResult> Index()
     {
         var result = await _dashboardService.GetDashboardDataAsync();
         return View(result.Data);
     }
 
+    [Permission(Permissions.DashboardRead)]
     public async Task<IActionResult> Download()
     {
         var result = await _dashboardService.GetDashboardReportAsync();
@@ -42,6 +46,7 @@ public class HomeController : Controller
         return File(System.Text.Encoding.UTF8.GetBytes(builder.ToString()), "text/csv", fileName);
     }
 
+    [Permission(Permissions.DashboardRead)]
     public IActionResult Privacy()
     {
         return View();

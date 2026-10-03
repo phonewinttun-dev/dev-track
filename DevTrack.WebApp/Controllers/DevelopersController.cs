@@ -1,3 +1,5 @@
+using DevTrack.WebApp.Auth;
+using DevTrack.Shared.Security;
 using DevTrack.Domain.Features.Developers;
 using DevTrack.Domain.Features.Developers.Models;
 using DevTrack.Shared;
@@ -14,12 +16,14 @@ public class DevelopersController : Controller
         _developerService = developerService;
     }
 
+    [Permission(Permissions.DevelopersRead)]
     public async Task<IActionResult> Index(int pageAt = 1)
     {
         var result = await _developerService.GetDevelopersAsync(new PaginationRequest { PageNumber = pageAt });
         return View(result);
     }
 
+    [Permission(Permissions.DevelopersRead)]
     public async Task<IActionResult> Details(int id)
     {
         var result = await _developerService.GetDeveloperByIdAsync(id);
@@ -31,12 +35,14 @@ public class DevelopersController : Controller
         return View(result.Data);
     }
 
+    [Permission(Permissions.DevelopersWrite)]
     public IActionResult Create()
     {
         return View(new DeveloperRequest());
     }
 
     [HttpPost]
+    [Permission(Permissions.DevelopersWrite)]
     public async Task<IActionResult> Create(DeveloperRequest request)
     {
         var result = await _developerService.CreateDeveloperAsync(request);

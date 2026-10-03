@@ -1,3 +1,6 @@
+using DevTrack.Database.Entities;
+using Microsoft.EntityFrameworkCore;
+using DevTrack.Domain.Security;
 using DevTrack.WebApp.Services;
 using DevTrack.WebApp.Auth;
 using DevTrack.Domain.Features.Batches;
@@ -21,11 +24,6 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container.
-builder.Services.AddOptions<AdminAuthOptions>()
-    .Bind(builder.Configuration.GetSection(AdminAuthOptions.SectionName))
-    .Validate(options => options.IsValid(), "AdminAuth must include Username, Password, and DisplayName.")
-    .ValidateOnStart();
-
 builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
     .Validate(options => options.IsValid(), "Jwt must include Issuer, Audience, a SigningKey of at least 32 characters, and a positive ExpiresMinutes value.")
@@ -41,19 +39,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
     });
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy(AuthConstants.AdminOnlyPolicy, policy =>
-        policy.RequireAuthenticatedUser().RequireRole(AuthConstants.AdminRole));
-});
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<RbacService>();
 
 builder.Services.AddControllersWithViews(options =>
 {
-    options.Filters.Add(new AuthorizeFilter(AuthConstants.AdminOnlyPolicy));
+    options.Filters.Add(new AuthorizeFilter());
 });
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IAdminCredentialValidator, AdminCredentialValidator>();
 builder.Services.AddScoped<IAdminJwtTokenService, AdminJwtTokenService>();
 builder.Services.AddTransient<AdminJwtAuthorizationHandler>();
 
@@ -77,7 +71,20 @@ builder.Services.AddScoped<IDeveloperService, DeveloperApiService>();
 builder.Services.AddScoped<ITrainingService, TrainingApiService>();
 builder.Services.AddScoped<IDashboardService, DashboardApiService>();
 
+var databaseProvider = builder.Configuration.GetValue<string>("DatabaseProvider") ?? "SqlServer";
+builder.Services.AddDbContext<DevTrackDbContext>(options =>
+{
+    if (databaseProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase)) options.UseInMemoryDatabase(builder.Configuration["DatabaseName"] ?? "DevTrackRbac");
+    else options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<DevTrackDbContext>();
+    if (databaseProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase)) db.Database.EnsureCreated();
+    await scope.ServiceProvider.GetRequiredService<RbacService>().SeedAsync(builder.Configuration["AdminAuth:Username"], builder.Configuration["AdminAuth:Password"], builder.Configuration["AdminAuth:DisplayName"] ?? "System Admin");
+}
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

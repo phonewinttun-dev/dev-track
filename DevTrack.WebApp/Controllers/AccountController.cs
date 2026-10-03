@@ -1,3 +1,4 @@
+using DevTrack.Domain.Security;
 using System.Security.Claims;
 using DevTrack.Shared.Security;
 using DevTrack.WebApp.Auth;
@@ -12,18 +13,17 @@ namespace DevTrack.WebApp.Controllers;
 
 public class AccountController : Controller
 {
-    private readonly IAdminCredentialValidator _credentialValidator;
+    private readonly RbacService _credentialValidator;
     private readonly IAdminJwtTokenService _jwtTokenService;
-    private readonly AdminAuthOptions _adminOptions;
+
 
     public AccountController(
-        IAdminCredentialValidator credentialValidator,
-        IAdminJwtTokenService jwtTokenService,
-        IOptions<AdminAuthOptions> adminOptions)
+        RbacService credentialValidator,
+        IAdminJwtTokenService jwtTokenService)
     {
         _credentialValidator = credentialValidator;
         _jwtTokenService = jwtTokenService;
-        _adminOptions = adminOptions.Value;
+
     }
 
     [AllowAnonymous]
@@ -48,21 +48,23 @@ public class AccountController : Controller
             return View(model);
         }
 
-        if (!_credentialValidator.Validate(model.Username, model.Password))
+        var user = await _credentialValidator.LoginAsync(model.Username, model.Password);
+        if (user is null)
         {
             ModelState.AddModelError(string.Empty, "Invalid username or password.");
             return View(model);
         }
 
-        var displayName = _adminOptions.DisplayName;
-        var accessToken = _jwtTokenService.CreateAdminToken(model.Username, displayName);
+        var displayName = user.DisplayName;
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, model.Username),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, displayName),
-            new(ClaimTypes.Role, AuthConstants.AdminRole)
+            new(ClaimTypes.Role, user.Role.RoleName)
         };
 
+        claims.AddRange((await _credentialValidator.GetPermissionsAsync(user.Id)).Select(x => new Claim("permission", x)));
+        var accessToken = _jwtTokenService.CreateToken(claims);
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
         var authProperties = new AuthenticationProperties

@@ -18,14 +18,12 @@ public class AdminJwtTokenService : IAdminJwtTokenService
 
     public string CreateAdminToken(string username, string displayName)
     {
-        var now = DateTime.UtcNow;
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, username),
-            new Claim(ClaimTypes.Name, displayName),
-            new Claim(ClaimTypes.Role, AuthConstants.AdminRole)
-        };
+        return CreateToken([new(ClaimTypes.NameIdentifier, username), new(ClaimTypes.Name, displayName), new(ClaimTypes.Role, AuthConstants.AdminRole)]);
+    }
 
+    public string CreateToken(IEnumerable<Claim> claims)
+    {
+        var now = DateTime.UtcNow;
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
