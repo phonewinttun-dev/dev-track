@@ -26,6 +26,9 @@ internal static class AuthTestSettings
     public static IReadOnlyDictionary<string, string?> ApiConfiguration => new Dictionary<string, string?>
     {
         ["DatabaseProvider"] = "InMemory",
+        ["AdminAuth:Username"] = Username,
+        ["AdminAuth:Password"] = Password,
+        ["AdminAuth:DisplayName"] = DisplayName,
         [$"{JwtOptions.SectionName}:Issuer"] = Issuer,
         [$"{JwtOptions.SectionName}:Audience"] = Audience,
         [$"{JwtOptions.SectionName}:SigningKey"] = SigningKey,

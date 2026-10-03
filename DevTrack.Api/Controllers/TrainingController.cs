@@ -1,3 +1,5 @@
+using DevTrack.Api.Auth;
+using DevTrack.Shared.Security;
 using DevTrack.Domain.Features.Training;
 using DevTrack.Domain.Features.Training.Models;
 using DevTrack.Shared;
@@ -17,6 +19,7 @@ public class TrainingController : ControllerBase
     }
 
     [HttpGet("batch/{batchId}/class-days")]
+    [Permission(Permissions.TrainingRead)]
     public async Task<IActionResult> GetClassDays(int batchId)
     {
         var result = await _trainingService.GetClassDaysAsync(batchId);
@@ -24,6 +27,7 @@ public class TrainingController : ControllerBase
     }
 
     [HttpGet("batch/{batchId}/schedule")]
+    [Permission(Permissions.TrainingRead)]
     public async Task<IActionResult> GetSchedule(int batchId, [FromQuery] PaginationRequest request)
     {
         var result = await _trainingService.GetScheduleAsync(batchId, request);
@@ -31,6 +35,7 @@ public class TrainingController : ControllerBase
     }
 
     [HttpGet("batch/{batchId}/attendance/{date}")]
+    [Permission(Permissions.TrainingRead)]
     public async Task<IActionResult> GetAttendance(int batchId, string date)
     {
         if (DateOnly.TryParse(date, out var targetDate))
@@ -42,6 +47,7 @@ public class TrainingController : ControllerBase
     }
 
     [HttpPost("attendance/bulk")]
+    [Permission(Permissions.TrainingWrite)]
     public async Task<IActionResult> MarkBulkAttendance(BulkAttendanceRequest request)
     {
         var result = await _trainingService.MarkBulkAttendanceAsync(request);
@@ -49,6 +55,7 @@ public class TrainingController : ControllerBase
     }
 
     [HttpGet("batch/{batchId}/summary")]
+    [Permission(Permissions.TrainingRead)]
     public async Task<IActionResult> GetAttendanceSummary(int batchId, [FromQuery] PaginationRequest request)
     {
         var result = await _trainingService.GetAttendanceSummaryAsync(batchId, request);
@@ -56,6 +63,7 @@ public class TrainingController : ControllerBase
     }
 
     [HttpGet("batch/{batchId}/summary/full")]
+    [Permission(Permissions.TrainingRead)]
     public async Task<IActionResult> GetFullAttendanceSummary(int batchId)
     {
         var result = await _trainingService.GetFullAttendanceSummaryAsync(batchId);

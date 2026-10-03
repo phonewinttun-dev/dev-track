@@ -1,3 +1,5 @@
+using DevTrack.Api.Auth;
+using DevTrack.Shared.Security;
 using DevTrack.Domain.Features.Developers;
 using DevTrack.Domain.Features.Developers.Models;
 using DevTrack.Shared;
@@ -17,6 +19,7 @@ public class DevelopersController : ControllerBase
     }
 
     [HttpGet]
+    [Permission(Permissions.DevelopersRead)]
     public async Task<IActionResult> GetDevelopers([FromQuery] PaginationRequest request)
     {
         var result = await _developerService.GetDevelopersAsync(request);
@@ -24,6 +27,7 @@ public class DevelopersController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [Permission(Permissions.DevelopersRead)]
     public async Task<IActionResult> GetDeveloper(int id)
     {
         var result = await _developerService.GetDeveloperByIdAsync(id);
@@ -31,6 +35,7 @@ public class DevelopersController : ControllerBase
     }
 
     [HttpPost]
+    [Permission(Permissions.DevelopersWrite)]
     public async Task<IActionResult> CreateDeveloper(DeveloperRequest request)
     {
         var result = await _developerService.CreateDeveloperAsync(request);

@@ -1,3 +1,5 @@
+using DevTrack.Api.Auth;
+using DevTrack.Shared.Security;
 using DevTrack.Domain.Features.Dashboard;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,6 +17,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet]
+    [Permission(Permissions.DashboardRead)]
     public async Task<IActionResult> GetDashboard()
     {
         var result = await _dashboardService.GetDashboardDataAsync();
@@ -22,6 +25,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("report")]
+    [Permission(Permissions.DashboardRead)]
     public async Task<IActionResult> GetDashboardReport()
     {
         var result = await _dashboardService.GetDashboardReportAsync();

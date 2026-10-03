@@ -1,3 +1,4 @@
+using DevTrack.Domain.Security;
 using DevTrack.Database;
 using DevTrack.Database.Entities;
 using DevTrack.Domain.Features.Batches;
@@ -21,12 +22,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.ConfigureOptions<DevTrack.Api.Auth.ConfigureJwtBearerOptions>();
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy(AuthConstants.AdminOnlyPolicy, policy =>
-        policy.RequireAuthenticatedUser().RequireRole(AuthConstants.AdminRole));
-});
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<RbacService>();
 
+builder.Services.AddScoped<DevTrack.Api.Auth.JwtTokenService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -37,7 +36,7 @@ builder.Services.AddDbContext<DevTrackDbContext>(options =>
 {
     if (databaseProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase))
     {
-        options.UseInMemoryDatabase("DevTrackDb");
+        options.UseInMemoryDatabase(builder.Configuration["DatabaseName"] ?? "DevTrackDb");
     }
     else
     {
@@ -52,6 +51,13 @@ builder.Services.AddScoped<ITrainingService, TrainingService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<DevTrackDbContext>();
+    if (databaseProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase)) db.Database.EnsureCreated();
+    await scope.ServiceProvider.GetRequiredService<RbacService>().SeedAsync(builder.Configuration["AdminAuth:Username"], builder.Configuration["AdminAuth:Password"], builder.Configuration["AdminAuth:DisplayName"] ?? "System Admin");
+}
+
 
 // Ensure Database is Created (for In-Memory)
 using (var scope = app.Services.CreateScope())
@@ -76,6 +82,6 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers().RequireAuthorization(AuthConstants.AdminOnlyPolicy);
+app.MapControllers().RequireAuthorization();
 
 app.Run();

@@ -1,3 +1,5 @@
+using DevTrack.Api.Auth;
+using DevTrack.Shared.Security;
 using DevTrack.Domain.Features.Batches;
 using DevTrack.Domain.Features.Batches.Models;
 using DevTrack.Shared;
@@ -17,6 +19,7 @@ public class BatchesController : ControllerBase
     }
 
     [HttpGet]
+    [Permission(Permissions.BatchesRead)]
     public async Task<IActionResult> GetBatches([FromQuery] PaginationRequest request)
     {
         var result = await _batchService.GetBatchesAsync(request);
@@ -24,6 +27,7 @@ public class BatchesController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Permission(Permissions.BatchesRead)]
     public async Task<IActionResult> GetBatchById(int id)
     {
         var result = await _batchService.GetBatchByIdAsync(id);
@@ -31,6 +35,7 @@ public class BatchesController : ControllerBase
     }
 
     [HttpPost]
+    [Permission(Permissions.BatchesWrite)]
     public async Task<IActionResult> CreateBatch([FromBody] BatchRequest request)
     {
         var result = await _batchService.CreateBatchAsync(request);
@@ -38,6 +43,7 @@ public class BatchesController : ControllerBase
     }
 
     [HttpGet("{id}/developers")]
+    [Permission(Permissions.BatchesRead)]
     public async Task<IActionResult> GetBatchDevelopers(int id)
     {
         var result = await _batchService.GetBatchDevelopersAsync(id);
@@ -45,6 +51,7 @@ public class BatchesController : ControllerBase
     }
 
     [HttpPost("{id}/assignments")]
+    [Permission(Permissions.BatchesWrite)]
     public async Task<IActionResult> UpdateAssignments(int id, [FromBody] List<int> selectedDeveloperIds)
     {
         var result = await _batchService.UpdateBatchAssignmentsAsync(id, selectedDeveloperIds);
