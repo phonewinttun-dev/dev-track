@@ -1,4 +1,22 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
+const menuToggle = document.getElementById("main-menu-toggle");
+const mainMenu = document.getElementById("main-menu");
 
-// Write your JavaScript code.
+if (menuToggle && mainMenu) {
+    function setMenuOpen(isOpen) {
+        menuToggle.setAttribute("aria-expanded", String(isOpen));
+        mainMenu.classList.toggle("hidden", !isOpen);
+    }
+
+    menuToggle.addEventListener("click", () => {
+        setMenuOpen(menuToggle.getAttribute("aria-expanded") !== "true");
+    });
+
+    menuToggle.closest("nav").addEventListener("keydown", event => {
+        if (event.key === "Escape" && menuToggle.getAttribute("aria-expanded") === "true") {
+            setMenuOpen(false);
+            menuToggle.focus();
+        }
+    });
+
+    window.matchMedia("(min-width: 1024px)").addEventListener("change", () => setMenuOpen(false));
+}
