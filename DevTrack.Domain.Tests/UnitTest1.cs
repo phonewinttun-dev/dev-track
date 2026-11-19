@@ -1,7 +1,9 @@
+using DevTrack.Domain.Features.Batches.Models;
+using DevTrack.Domain.Features.Training.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 ﻿using DevTrack.Database.Entities;
 using DevTrack.Domain.Features.Batches;
 using DevTrack.Domain.Features.Training;
-using DevTrack.Domain.Features.Training.Models;
 using DevTrack.Shared;
 
 namespace DevTrack.Domain.Tests;
@@ -24,7 +26,7 @@ public class FeatureRegressionTests
             new AttendanceRecord { BatchId = batchId, DeveloperId = 1, TrainingDate = new DateOnly(2026, 5, 3), Status = "Absent" });
         await db.SaveChangesAsync();
 
-        var service = new TrainingService(db);
+        var service = new TrainingService(db, NullLogger<TrainingService>.Instance);
         var result = await service.GetAttendanceSummaryAsync(batchId, new PaginationRequest { PageNumber = 1, PageSize = 10 });
         var summary = Assert.Single(result.Data);
 
@@ -49,7 +51,7 @@ public class FeatureRegressionTests
         });
         await db.SaveChangesAsync();
 
-        var service = new TrainingService(db);
+        var service = new TrainingService(db, NullLogger<TrainingService>.Instance);
         var result = await service.MarkBulkAttendanceAsync(new BulkAttendanceRequest
         {
             BatchId = batchId,
@@ -74,7 +76,7 @@ public class FeatureRegressionTests
         db.BatchDevelopers.Add(new BatchDeveloper { BatchId = 1, DeveloperId = 1 });
         await db.SaveChangesAsync();
 
-        var service = new BatchService(db);
+        var service = new BatchService(db, NullLogger<BatchService>.Instance);
         var result = await service.GetBatchDevelopersAsync(2);
         Assert.NotNull(result.Data);
         Assert.DoesNotContain(result.Data, x => x.DeveloperId == 1 && !x.IsAssigned);

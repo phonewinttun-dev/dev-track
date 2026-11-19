@@ -1,3 +1,4 @@
+using DevTrack.WebApp.Services;
 using DevTrack.WebApp.Auth;
 using DevTrack.Shared.Security;
 using System.Diagnostics;
@@ -39,7 +40,8 @@ public class HomeController : Controller
 
         foreach (var item in result.Data)
         {
-            builder.AppendLine($"{item.BatchName},{item.MentorName},{item.DeveloperCount}");
+            builder.AppendLine(FormattableString.Invariant(
+                $"{Csv.Escape(item.BatchName)},{Csv.Escape(item.MentorName)},{item.DeveloperCount}"));
         }
 
         var fileName = $"Dashboard_Report_{DateTime.Now:yyyyMMdd}.csv";

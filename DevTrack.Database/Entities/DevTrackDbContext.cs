@@ -53,6 +53,7 @@ public partial class DevTrackDbContext : DbContext
         modelBuilder.Entity<AttendanceRecord>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Attendan__3214EC07B2CC7D85");
+            entity.HasIndex(e => new { e.BatchId, e.TrainingDate, e.DeveloperId }).IsUnique();
 
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")

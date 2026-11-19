@@ -1,6 +1,7 @@
+using DevTrack.Domain.Features.Batches.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using DevTrack.Database.Entities;
 using DevTrack.Domain.Features.Batches;
-using DevTrack.Domain.Features.Batches.Models;
 using DevTrack.Shared;
 
 namespace DevTrack.Domain.Tests;
@@ -11,7 +12,7 @@ public class BatchServiceTests
     public async Task CreateBatch_ShouldGenerateCalendarEntries()
     {
         using var db = TestDbContextFactory.Create();
-        var service = new BatchService(db);
+        var service = new BatchService(db, NullLogger<BatchService>.Instance);
 
         var response = await service.CreateBatchAsync(new BatchRequest
         {
@@ -32,7 +33,7 @@ public class BatchServiceTests
     public async Task CreateBatch_ShouldFailWhenBatchNameMissing()
     {
         using var db = TestDbContextFactory.Create();
-        var service = new BatchService(db);
+        var service = new BatchService(db, NullLogger<BatchService>.Instance);
 
         var response = await service.CreateBatchAsync(new BatchRequest
         {
@@ -56,7 +57,7 @@ public class BatchServiceTests
         db.BatchDevelopers.Add(new BatchDeveloper { BatchId = 1, DeveloperId = 1 });
         await db.SaveChangesAsync();
 
-        var service = new BatchService(db);
+        var service = new BatchService(db, NullLogger<BatchService>.Instance);
         var result = await service.UpdateBatchAssignmentsAsync(1, [2]);
 
         Assert.True(result.IsSuccess);
@@ -73,7 +74,7 @@ public class BatchServiceTests
             new Batch { Id = 2, BatchName = "New", StartDate = new DateOnly(2026, 3, 1), EndDate = new DateOnly(2026, 4, 1) });
         await db.SaveChangesAsync();
 
-        var service = new BatchService(db);
+        var service = new BatchService(db, NullLogger<BatchService>.Instance);
         var result = await service.GetBatchesAsync(new PaginationRequest { PageNumber = 1, PageSize = 10 });
 
         Assert.Equal(2, result.Data.Count);

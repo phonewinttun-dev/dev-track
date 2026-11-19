@@ -8,6 +8,14 @@ services:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: DatabaseProvider
-        value: InMemory
+        value: SqlServer
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__SigningKey
+        sync: false
+      - key: AdminAuth__Username
+        sync: false
+      - key: AdminAuth__Password
+        sync: false
       - key: ApiSettings__BaseUrl
         value: http://localhost:5000

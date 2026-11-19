@@ -42,7 +42,7 @@ RUN chmod +x /app/run.sh
 
 # Default env vars for the combined service
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV DatabaseProvider=InMemory
+ENV DatabaseProvider=SqlServer
 ENV ApiSettings__BaseUrl=http://localhost:5000
 
 EXPOSE 8080

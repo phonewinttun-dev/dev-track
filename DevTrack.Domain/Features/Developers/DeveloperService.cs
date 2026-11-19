@@ -1,149 +1,181 @@
-using DevTrack.Database.Entities;
 using DevTrack.Domain.Features.Developers.Models;
+using DevTrack.Domain.Features.Training.Models;
+using DevTrack.Database.Entities;
 using DevTrack.Shared;
+using DevTrack.Domain.Features.Training;
 using Microsoft.EntityFrameworkCore;
+
+using Microsoft.Extensions.Logging;
 
 namespace DevTrack.Domain.Features.Developers;
 
 public class DeveloperService : IDeveloperService
 {
-    private readonly DevTrackDbContext _db;
+    private readonly DevTrackDbContext dbContext;
 
-    public DeveloperService(DevTrackDbContext db)
+    private readonly ILogger<DeveloperService> logger;
+
+    public DeveloperService(DevTrackDbContext db, ILogger<DeveloperService> logger)
     {
-        _db = db;
+        dbContext = db;
+        this.logger = logger;
     }
 
     public async Task<PagedResult<DeveloperResponse>> GetDevelopersAsync(PaginationRequest request)
     {
-        var query = _db.Developers.AsNoTracking();
-        
-        var totalCount = await query.CountAsync();
-        
-        var developers = await query
-            .OrderBy(d => d.FullName)
-            .Skip((request.PageNumber - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .Select(d => new DeveloperResponse
-            {
-                Id = d.Id,
-                FullName = d.FullName,
-                DeveloperCode = d.DeveloperCode,
-                Email = d.Email,
-                IsActive = d.IsActive ?? true
-            })
-            .ToListAsync();
+        try
+        {
+            var query = dbContext.Developers.AsNoTracking();
 
-        var pagination = new Pagination(request.PageNumber, request.PageSize, totalCount);
-        return PagedResult<DeveloperResponse>.Success(developers, pagination);
+            var totalCount = await query.CountAsync();
+
+            var developers = await query
+                .OrderBy(d => d.FullName)
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(d => new DeveloperResponse
+                {
+                    Id = d.Id,
+                    FullName = d.FullName,
+                    DeveloperCode = d.DeveloperCode,
+                    Email = d.Email,
+                    IsActive = d.IsActive ?? true
+                })
+                .ToListAsync();
+
+            var pagination = new Pagination(request.PageNumber, request.PageSize, totalCount);
+            return PagedResult<DeveloperResponse>.Success(developers, pagination);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogError(exception, "GetDevelopersAsync => Operation failed.");
+            return PagedResult<DeveloperResponse>.Failure("Unable to complete the operation. Please try again.");
+        }
     }
 
     public async Task<Result<DeveloperDetailResponse>> GetDeveloperByIdAsync(int id)
     {
-        var developer = await _db.Developers
-            .AsNoTracking()
-            .Where(d => d.Id == id)
-            .Select(d => new DeveloperDetailResponse
-            {
-                Id = d.Id,
-                FullName = d.FullName,
-                DeveloperCode = d.DeveloperCode,
-                Email = d.Email,
-                Phone = d.Phone,
-                IsActive = d.IsActive ?? true,
-                CreatedAt = d.CreatedAt
-            })
-            .FirstOrDefaultAsync();
-
-        if (developer == null)
+        try
         {
-            return Result<DeveloperDetailResponse>.Failure("Developer not found.");
-        }
+            var developer = await dbContext.Developers
+                .AsNoTracking()
+                .Where(d => d.Id == id)
+                .Select(d => new DeveloperDetailResponse
+                {
+                    Id = d.Id,
+                    FullName = d.FullName,
+                    DeveloperCode = d.DeveloperCode,
+                    Email = d.Email,
+                    Phone = d.Phone,
+                    IsActive = d.IsActive ?? true,
+                    CreatedAt = d.CreatedAt
+                })
+                .FirstOrDefaultAsync();
 
-        var currentBatch = await _db.BatchDevelopers
-            .AsNoTracking()
-            .Where(bd => bd.DeveloperId == id)
-            .OrderByDescending(bd => bd.Batch.StartDate)
-            .Select(bd => new DeveloperBatchSummary
+            if (developer == null)
             {
-                BatchId = bd.Batch.Id,
-                BatchName = bd.Batch.BatchName,
-                MentorName = bd.Batch.MentorName,
-                StartDate = bd.Batch.StartDate,
-                EndDate = bd.Batch.EndDate,
-                MinAttendancePercent = bd.Batch.MinAttendancePercent
-            })
-            .FirstOrDefaultAsync();
+                return Result<DeveloperDetailResponse>.Failure("Developer not found.");
+            }
 
-        developer.CurrentBatch = currentBatch;
+            var currentBatch = await dbContext.BatchDevelopers
+                .AsNoTracking()
+                .Where(bd => bd.DeveloperId == id)
+                .OrderByDescending(bd => bd.Batch.StartDate)
+                .Select(bd => new DeveloperBatchSummary
+                {
+                    BatchId = bd.Batch.Id,
+                    BatchName = bd.Batch.BatchName,
+                    MentorName = bd.Batch.MentorName,
+                    StartDate = bd.Batch.StartDate,
+                    EndDate = bd.Batch.EndDate,
+                    MinAttendancePercent = bd.Batch.MinAttendancePercent
+                })
+                .FirstOrDefaultAsync();
 
-        if (currentBatch == null)
-        {
+            developer.CurrentBatch = currentBatch;
+
+            if (currentBatch == null)
+            {
+                return Result<DeveloperDetailResponse>.Success(developer);
+            }
+
+            var totalClasses = await dbContext.TrainingCalendars
+                .AsNoTracking()
+                .CountAsync(c => c.BatchId == currentBatch.BatchId && (c.IsAttendanceRequired ?? false));
+
+            var attendance = await dbContext.AttendanceRecords
+                .AsNoTracking()
+                .Where(a => a.BatchId == currentBatch.BatchId && a.DeveloperId == id)
+                .ToListAsync();
+
+            var metrics = AttendanceMetrics.Calculate(attendance, totalClasses, currentBatch.MinAttendancePercent);
+
+            developer.Attendance = new DeveloperAttendanceSummary
+            {
+                TotalClasses = totalClasses,
+                PresentDays = metrics.PresentDays,
+                AbsentDays = metrics.AbsentDays,
+                LeaveDays = metrics.LeaveDays,
+                LateDays = metrics.LateDays,
+                AttendancePercent = metrics.AttendancePercent,
+                Status = metrics.Status
+            };
+
+            developer.RecentAttendance = attendance
+                .OrderByDescending(a => a.TrainingDate)
+                .Take(10)
+                .Select(a => new DeveloperAttendanceRecordResponse
+                {
+                    TrainingDate = a.TrainingDate,
+                    Status = a.Status,
+                    Remark = a.Remark
+                })
+                .ToList();
+
             return Result<DeveloperDetailResponse>.Success(developer);
         }
-
-        var totalClasses = await _db.TrainingCalendars
-            .AsNoTracking()
-            .CountAsync(c => c.BatchId == currentBatch.BatchId && (c.IsAttendanceRequired ?? false));
-
-        var attendance = await _db.AttendanceRecords
-            .AsNoTracking()
-            .Where(a => a.BatchId == currentBatch.BatchId && a.DeveloperId == id)
-            .ToListAsync();
-
-        var presentDays = attendance.Count(a => a.Status == "Present");
-        var attendancePercent = totalClasses > 0 ? (decimal)presentDays * 100 / totalClasses : 0;
-
-        developer.Attendance = new DeveloperAttendanceSummary
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            TotalClasses = totalClasses,
-            PresentDays = presentDays,
-            AbsentDays = attendance.Count(a => a.Status == "Absent"),
-            LeaveDays = attendance.Count(a => a.Status == "Leave"),
-            LateDays = attendance.Count(a => a.Status == "Late"),
-            AttendancePercent = Math.Round(attendancePercent, 2),
-            Status = attendancePercent >= 80 ? "Eligible" : (attendancePercent >= 70 ? "Warning" : "Not Eligible")
-        };
-
-        developer.RecentAttendance = attendance
-            .OrderByDescending(a => a.TrainingDate)
-            .Take(10)
-            .Select(a => new DeveloperAttendanceRecordResponse
-            {
-                TrainingDate = a.TrainingDate,
-                Status = a.Status,
-                Remark = a.Remark
-            })
-            .ToList();
-
-        return Result<DeveloperDetailResponse>.Success(developer);
+            logger.LogError(exception, "GetDeveloperByIdAsync => Operation failed.");
+            return Result<DeveloperDetailResponse>.Failure("Unable to complete the operation. Please try again.");
+        }
     }
 
     public async Task<Result<DeveloperResponse>> CreateDeveloperAsync(DeveloperRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.FullName))
-            return Result<DeveloperResponse>.Failure("Full name is required.");
-
-        var developer = new Developer
+        try
         {
-            FullName = request.FullName,
-            DeveloperCode = request.DeveloperCode,
-            Email = request.Email,
-            Phone = request.Phone,
-            IsActive = request.IsActive,
-            CreatedAt = DateTime.Now
-        };
+            if (string.IsNullOrWhiteSpace(request.FullName))
+            {
+                return Result<DeveloperResponse>.Failure("Full name is required.");
+            }
 
-        _db.Developers.Add(developer);
-        await _db.SaveChangesAsync();
+            var developer = new Developer
+            {
+                FullName = request.FullName,
+                DeveloperCode = request.DeveloperCode,
+                Email = request.Email,
+                Phone = request.Phone,
+                IsActive = request.IsActive,
+                CreatedAt = DateTime.Now
+            };
 
-        return Result<DeveloperResponse>.Success(new DeveloperResponse
+            dbContext.Developers.Add(developer);
+            await dbContext.SaveChangesAsync();
+
+            return Result<DeveloperResponse>.Success(new DeveloperResponse
+            {
+                Id = developer.Id,
+                FullName = developer.FullName,
+                DeveloperCode = developer.DeveloperCode,
+                Email = developer.Email,
+                IsActive = developer.IsActive ?? true
+            }, "Developer created successfully.");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            Id = developer.Id,
-            FullName = developer.FullName,
-            DeveloperCode = developer.DeveloperCode,
-            Email = developer.Email,
-            IsActive = developer.IsActive ?? true
-        }, "Developer created successfully.");
+            logger.LogError(exception, "CreateDeveloperAsync => Operation failed.");
+            return Result<DeveloperResponse>.Failure("Unable to complete the operation. Please try again.");
+        }
     }
 }

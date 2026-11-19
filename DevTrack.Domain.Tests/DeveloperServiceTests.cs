@@ -1,6 +1,7 @@
+using DevTrack.Domain.Features.Developers.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using DevTrack.Database.Entities;
 using DevTrack.Domain.Features.Developers;
-using DevTrack.Domain.Features.Developers.Models;
 using DevTrack.Shared;
 
 namespace DevTrack.Domain.Tests;
@@ -11,7 +12,7 @@ public class DeveloperServiceTests
     public async Task CreateDeveloper_ShouldPersistAndReturnModel()
     {
         using var db = TestDbContextFactory.Create();
-        var service = new DeveloperService(db);
+        var service = new DeveloperService(db, NullLogger<DeveloperService>.Instance);
 
         var result = await service.CreateDeveloperAsync(new DeveloperRequest
         {
@@ -31,7 +32,7 @@ public class DeveloperServiceTests
     public async Task CreateDeveloper_ShouldFailWhenNameMissing()
     {
         using var db = TestDbContextFactory.Create();
-        var service = new DeveloperService(db);
+        var service = new DeveloperService(db, NullLogger<DeveloperService>.Instance);
 
         var result = await service.CreateDeveloperAsync(new DeveloperRequest { FullName = "" });
 
@@ -49,7 +50,7 @@ public class DeveloperServiceTests
             new Developer { Id = 3, FullName = "Mike", IsActive = false });
         await db.SaveChangesAsync();
 
-        var service = new DeveloperService(db);
+        var service = new DeveloperService(db, NullLogger<DeveloperService>.Instance);
         var result = await service.GetDevelopersAsync(new PaginationRequest { PageNumber = 1, PageSize = 2 });
 
         Assert.Equal(2, result.Data.Count);

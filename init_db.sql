@@ -79,6 +79,16 @@ BEGIN
     );
 END
 
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'dbo.AttendanceRecords')
+      AND name = N'IX_AttendanceRecords_BatchId_TrainingDate_DeveloperId'
+)
+BEGIN
+    CREATE UNIQUE INDEX IX_AttendanceRecords_BatchId_TrainingDate_DeveloperId
+        ON dbo.AttendanceRecords (BatchId, TrainingDate, DeveloperId);
+END
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AssignmentSubmissions')
 BEGIN
     CREATE TABLE AssignmentSubmissions (

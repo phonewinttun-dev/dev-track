@@ -1,3 +1,4 @@
+using DevTrack.WebApp.Services;
 using DevTrack.WebApp.Auth;
 using DevTrack.Shared.Security;
 using DevTrack.Domain.Features.Training;
@@ -99,7 +100,11 @@ public class AttendanceController : Controller
 
         foreach (var item in result.Data)
         {
-            builder.AppendLine($"{item.DeveloperCode},{item.FullName},{item.TotalClasses},{item.PresentDays},{item.AbsentDays},{item.LeaveDays},{item.AttendancePercent}%,{item.Status}");
+            builder.Append(Csv.Escape(item.DeveloperCode)).Append(',');
+            builder.Append(Csv.Escape(item.FullName)).Append(',');
+            builder.Append(FormattableString.Invariant(
+                $"{item.TotalClasses},{item.PresentDays},{item.AbsentDays},{item.LeaveDays},{item.AttendancePercent}%,"));
+            builder.AppendLine(Csv.Escape(item.Status));
         }
 
         var fileName = $"Attendance_Report_{batch.Data?.BatchName}_{DateTime.Now:yyyyMMdd}.csv";

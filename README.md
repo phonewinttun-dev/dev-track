@@ -36,7 +36,7 @@ The solution is divided into five main projects to ensure a clean separation of 
 - SQL Server
 
 ### Configuration
-1. **Database**: Configure the same SQL Server connection for both hosts and apply `rbac_schema.sql` (see Dynamic RBAC below).
+1. **Database**: Configure the same SQL Server connection for both hosts and apply `init_db.sql` and `rbac_schema.sql` (see Dynamic RBAC below). For an existing database, rerun `init_db.sql` to add the attendance uniqueness index. Reconcile any duplicate marks for the same batch, developer, and date before applying the index.
 2. **API URL**: Update the `ApiSettings:BaseUrl` in `DevTrack.WebApp/appsettings.json` to match the API's hosting URL.
 3. **Admin login**: Configure `AdminAuth:Username`, `AdminAuth:Password`, and `AdminAuth:DisplayName` for both hosts through user secrets or environment variables to bootstrap the first database user.
 4. **JWT**: Configure the same `Jwt:Issuer`, `Jwt:Audience`, and `Jwt:SigningKey` in both `DevTrack.WebApp` and `DevTrack.Api`. Use a signing key with at least 32 characters and keep production keys out of committed appsettings files.

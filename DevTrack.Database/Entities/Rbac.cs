@@ -1,17 +1,45 @@
 using Microsoft.EntityFrameworkCore;
+
 namespace DevTrack.Database.Entities;
 
-public class AppUser { public int Id { get; set; } public string Username { get; set; } = ""; public string DisplayName { get; set; } = ""; public string PasswordHash { get; set; } = ""; public int RoleId { get; set; } public AppRole Role { get; set; } = null!; public bool IsActive { get; set; } = true; }
-public class AppRole { public int Id { get; set; } public string RoleName { get; set; } = ""; }
-public class AppPermission { public int Id { get; set; } public string PermissionName { get; set; } = ""; }
-public class AppRolePermission { public int RoleId { get; set; } public AppRole Role { get; set; } = null!; public int PermissionId { get; set; } public AppPermission Permission { get; set; } = null!; }
+public class AppUser
+{
+    public int Id { get; set; }
+    public string Username { get; set; } = "";
+    public string DisplayName { get; set; } = "";
+    public string PasswordHash { get; set; } = "";
+    public int RoleId { get; set; }
+    public AppRole Role { get; set; } = null!;
+    public bool IsActive { get; set; } = true;
+}
+
+public class AppRole
+{
+    public int Id { get; set; }
+    public string RoleName { get; set; } = "";
+}
+
+public class AppPermission
+{
+    public int Id { get; set; }
+    public string PermissionName { get; set; } = "";
+}
+
+public class AppRolePermission
+{
+    public int RoleId { get; set; }
+    public AppRole Role { get; set; } = null!;
+    public int PermissionId { get; set; }
+    public AppPermission Permission { get; set; } = null!;
+}
+
 public partial class DevTrackDbContext
 {
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<AppRole> Roles => Set<AppRole>();
     public DbSet<AppPermission> Permissions => Set<AppPermission>();
     public DbSet<AppRolePermission> RolePermissions => Set<AppRolePermission>();
-    partial void OnModelCreatingPartial(Microsoft.EntityFrameworkCore.ModelBuilder modelBuilder)
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppUser>().HasIndex(x => x.Username).IsUnique();
         modelBuilder.Entity<AppUser>().Property(x => x.Username).HasMaxLength(150);

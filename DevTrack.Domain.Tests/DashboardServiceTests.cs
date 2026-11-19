@@ -1,3 +1,5 @@
+using DevTrack.Domain.Features.Dashboard.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using DevTrack.Database.Entities;
 using DevTrack.Domain.Features.Dashboard;
 
@@ -23,7 +25,7 @@ public class DashboardServiceTests
             new AttendanceRecord { BatchId = 1, DeveloperId = 1, TrainingDate = today, Status = "Absent" });
         await db.SaveChangesAsync();
 
-        var service = new DashboardService(db);
+        var service = new DashboardService(db, NullLogger<DashboardService>.Instance);
         var result = await service.GetDashboardDataAsync();
 
         Assert.True(result.IsSuccess);

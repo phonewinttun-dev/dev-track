@@ -9,6 +9,7 @@ using DevTrack.Domain.Features.Training;
 using DevTrack.Domain.Features.Dashboard;
 using DevTrack.Shared.Security;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Serilog;
 
@@ -45,6 +46,7 @@ builder.Services.AddScoped<RbacService>();
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add(new AuthorizeFilter());
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
 });
 
 builder.Services.AddHttpContextAccessor();
