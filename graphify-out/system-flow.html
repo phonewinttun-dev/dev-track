@@ -70,7 +70,12 @@
       <p>Follow a request from the browser through MVC, the API, and the database. Select any step to see what it does.</p>
     </section>
     <div class="switcher" role="group" aria-label="Choose a system flow">
-      <button type="button" data-flow="architecture" aria-pressed="true">Architecture</button>
+      <button type="button" data-flow="architecture" aria-pressed="false">Architecture</button>
+      <button type="button" data-flow="attendance" aria-pressed="true">Attendance</button>
+    </div>
+    <div id="attendance-outcome" class="switcher" role="group" aria-label="Choose an attendance submission outcome" hidden>
+      <button type="button" data-outcome="valid" aria-pressed="true">Valid submission</button>
+      <button type="button" data-outcome="invalid" aria-pressed="false">Invalid submission</button>
     </div>
     <noscript><p>JavaScript is required for the explorer. Read the <a href="SYSTEM_FLOW.md">system-flow document</a> for the full flow.</p></noscript>
     <div class="workspace">
@@ -79,7 +84,7 @@
         <div aria-live="polite" aria-atomic="true">
           <p id="step-count"></p>
           <p id="step-layer" class="layer"></p>
-          <h2 id="step-title">Architecture</h2>
+          <h2 id="step-title">Attendance</h2>
           <p id="step-description"></p>
           <dl class="facts" id="step-facts" hidden>
             <div><dt id="request-label">Request</dt><dd id="step-request"></dd></div>
@@ -115,7 +120,31 @@
           ]
         }
       };
-      let flowName = "architecture";
+      const write = "training.write";
+      const attendanceForm = "../DevTrack.WebApp/Controllers/AttendanceController.cs";
+      const trainingApi = "../DevTrack.Api/Controllers/TrainingController.cs";
+      const trainingService = "../DevTrack.Domain/Features/Training/TrainingService.cs";
+      const markRoute = "POST /Attendance/Mark";
+      const bulkRoute = "POST /api/training/attendance/bulk";
+      const initialAttendanceSteps = [
+        ["Submit attendance marks", markRoute, "Staff submit the batch, class date, and marks as form data, along with the antiforgery token.", attendanceForm, "Browser", markRoute, write, "MVC receives the attendance form."],
+        ["Check the form and permissions", "MVC antiforgery and live permission check", "MVC requires a valid antiforgery token and queries the API for the signed-in user’s current permissions.", "../DevTrack.WebApp/Program.cs", "MVC", markRoute + " · GET /api/auth/permissions", write, "MVC sends the bulk request after both checks pass."],
+        ["Authorize the bulk update", bulkRoute, "The API validates the bearer token and checks the write permission again before calling TrainingService.", trainingApi, "API", bulkRoute + " · bearer JWT and JSON", write, "Authorized request reaches TrainingService."]
+      ];
+      const outcomes = {
+        valid: [
+          ["Accept the submission", "Class date and roster match", "The class requires attendance, and the submission has exactly one supported status for every developer on the roster.", trainingService, "Domain", "MarkBulkAttendanceAsync(BulkAttendanceRequest)", write + " (checked by API)", "Validation passes and the service prepares the update."],
+          ["Save marks", "EF Core persistence", "SQL Server enforces one attendance row per batch, date, and developer.", "../init_db.sql", "Database", "EF Core SaveChangesAsync()", "No separate feature check", "Marks are saved. The API returns HTTP 200 with a successful Result."],
+          ["Redirect to the summary", "Attendance results", "MVC redirects to the attendance summary. Following that redirect requires read access.", attendanceForm, "MVC", "HTTP 302 → GET /Attendance?batchId={id}", "training.read and batches.read", "The summary includes the saved marks if the user has read access."]
+        ],
+        invalid: [
+          ["Reject a duplicate mark", "Example: the same developer appears twice", "The submitted developer IDs must be unique and match the batch roster. This submission fails validation before EF Core saves anything.", trainingService, "Domain", "MarkBulkAttendanceAsync(BulkAttendanceRequest)", write + " (checked by API)", "Result.Failure. Existing marks are preserved."],
+          ["Return the validation failure", "HTTP 200 with a failed Result", "The endpoint uses the shared Result body for this business validation failure.", trainingApi, "API", bulkRoute, write, "HTTP 200 with IsSuccess=false and the validation message."],
+          ["Redisplay the marking form", "Validation message on the same page", "MVC adds the message to ModelState and reloads the marking view for the same batch and date.", attendanceForm, "MVC", markRoute, write, "The form shows the error. MVC does not redirect."]
+        ]
+      };
+      let flowName = "attendance";
+      let outcome = "valid";
       let currentStep = 0;
       let steps = [];
 
@@ -142,7 +171,11 @@
 
       function renderFlow(name, selectedStep = 0) {
         flowName = name;
-        const flow = flows.architecture;
+        const attendance = name === "attendance";
+        const flow = attendance ? {
+          stages: [...initialAttendanceSteps, ...outcomes[outcome]].map(step => [step]),
+          connectors: ["Form submission", "Bearer JWT + JSON", "Training service", outcome === "valid" ? "Validation passed" : "Validation failed", "Result returned to MVC"]
+        } : flows.architecture;
         steps = flow.stages.flat();
         const $diagram = $("#diagram").empty();
         let index = 0;
@@ -162,6 +195,7 @@
           $diagram.append($stage);
         });
         $("#controls").prop("hidden", false);
+        $("#attendance-outcome").prop("hidden", !attendance);
         selectStep(Math.min(selectedStep, steps.length - 1));
       }
 
@@ -170,12 +204,18 @@
         $(this).attr("aria-pressed", "true");
         renderFlow($(this).data("flow"));
       });
+      $("[data-outcome]").on("click", function () {
+        outcome = this.dataset.outcome;
+        $("[data-outcome]").attr("aria-pressed", "false");
+        $(this).attr("aria-pressed", "true");
+        renderFlow(flowName, currentStep);
+      });
       $("#diagram").on("click", "[data-step]", function () {
         selectStep(Number(this.dataset.step));
       });
       $("#previous").on("click", () => selectStep(currentStep - 1));
       $("#next").on("click", () => selectStep(currentStep + 1));
-      renderFlow("architecture");
+      renderFlow("attendance");
     });
   </script>
 </body>
