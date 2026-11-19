@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Local Graphify cache and scan state
+/graphify-out/cache/
+/graphify-out/.graphify_*
+/graphify-out/cost.json
+/graphify-out/manifest.json
