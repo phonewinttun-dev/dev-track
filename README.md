@@ -32,7 +32,7 @@ The solution is divided into five main projects to ensure a clean separation of 
 ## Getting Started
 
 ### Prerequisites
-- .NET 10 SDK (`10.0.400` or a compatible newer feature band)
+- .NET 10 SDK (`10.0.404` or a compatible newer feature band)
 - SQL Server
 
 ### Configuration
