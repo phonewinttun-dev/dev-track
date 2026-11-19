@@ -1,0 +1,17 @@
+[
+  {
+    "Name": "DevTrack",
+    "Projects": [
+      {
+        "Path": "DevTrack.Api\\DevTrack.Api.csproj",
+        "Action": "Start",
+        "DebugTarget": "https"
+      },
+      {
+        "Path": "DevTrack.WebApp\\DevTrack.WebApp.csproj",
+        "Action": "Start",
+        "DebugTarget": "https"
+      }
+    ]
+  }
+]
