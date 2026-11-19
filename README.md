@@ -45,6 +45,43 @@ Place business logic in the owning module's `Features/<Feature>` folder and shar
 2. Start the **DevTrack.WebApp** project.
 3. Access the system via the WebApp URL.
 
+### Local learning setup
+
+The API defaults to an in-memory database. Development launch profiles load API user secrets. From the repository root, run this once in PowerShell to create a local `learner` account and a random signing key. Save the password printed by the script for MVC login.
+
+```powershell
+$learningPassword = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(16))
+$learningKey = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+@{
+    'AdminAuth:Username' = 'learner'
+    'AdminAuth:Password' = $learningPassword
+    'Jwt:SigningKey' = $learningKey
+} | ConvertTo-Json | dotnet user-secrets set --project DevTrack.Api
+Write-Output $learningPassword
+```
+
+For a learning container, user secrets stay on the host. Pass `DatabaseProvider=InMemory` and supply `AdminAuth__Username`, `AdminAuth__Password`, and `Jwt__SigningKey` as container environment variables. The API settings file supplies the issuer, audience, and expiration defaults.
+
+```powershell
+docker build -t devtrack:learning .
+$apiSecretId = 'DevTrack.Api-9cc9fc2d-7b6b-4997-9e11-60b75f6a327a'
+$learningSecrets = Get-Content (Join-Path $env:APPDATA "Microsoft/UserSecrets/$apiSecretId/secrets.json") -Raw | ConvertFrom-Json
+$learningEnvFile = New-TemporaryFile
+try {
+    @(
+        'DatabaseProvider=InMemory'
+        "AdminAuth__Username=$($learningSecrets.'AdminAuth:Username')"
+        "AdminAuth__Password=$($learningSecrets.'AdminAuth:Password')"
+        "Jwt__SigningKey=$($learningSecrets.'Jwt:SigningKey')"
+    ) | Set-Content -LiteralPath $learningEnvFile.FullName
+    docker run --rm -p 127.0.0.1:8080:8080 --env-file $learningEnvFile.FullName devtrack:learning
+} finally {
+    Remove-Item -LiteralPath $learningEnvFile.FullName
+}
+```
+
+Open `http://localhost:8080` to sign in. Learning data resets when the container stops.
+
 ## Technology Stack
 - **Framework**: .NET 10 (C# 14)
 - **Database**: SQL Server with EF Core
