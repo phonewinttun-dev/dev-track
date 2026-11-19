@@ -1,6 +1,6 @@
-@model DevTrack.Shared.PagedResult<DevTrack.Domain.Features.Training.Models.TrainingCalendarResponse>
+@model DevTrack.Shared.PagedResult<DevTrack.Features.TrainingManagement.Training.TrainingCalendarResponse>
 @{
-    var batch = ViewBag.Batch as DevTrack.Domain.Features.Batches.Models.BatchResponse;
+    var batch = ViewBag.Batch as DevTrack.Features.TrainingManagement.Batches.BatchResponse;
     ViewData["Title"] = $"Training Schedule - {batch?.BatchName}";
 }
 

@@ -1,10 +1,7 @@
-using DevTrack.Domain.Security;
-using DevTrack.Database;
+using DevTrack.Features.Access.Auth;
+using DevTrack.Domain;
+using DevTrack.Domain.Access;
 using DevTrack.Database.Entities;
-using DevTrack.Domain.Features.Batches;
-using DevTrack.Domain.Features.Developers;
-using DevTrack.Domain.Features.Training;
-using DevTrack.Domain.Features.Dashboard;
 using DevTrack.Shared.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +20,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.ConfigureOptions<DevTrack.Api.Auth.ConfigureJwtBearerOptions>();
 
 builder.Services.AddAuthorization();
-builder.Services.AddScoped<RbacService>();
+builder.Services.AddAccessModule();
 
 builder.Services.AddScoped<DevTrack.Api.Auth.JwtTokenService>();
 builder.Services.AddControllers();
@@ -45,28 +42,22 @@ builder.Services.AddDbContext<DevTrackDbContext>(options =>
 });
 
 // Feature Services
-builder.Services.AddScoped<IBatchService, BatchService>();
-builder.Services.AddScoped<IDeveloperService, DeveloperService>();
-builder.Services.AddScoped<ITrainingService, TrainingService>();
-builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddTrainingManagementModule();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<DevTrackDbContext>();
-    if (databaseProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase)) db.Database.EnsureCreated();
-    await scope.ServiceProvider.GetRequiredService<RbacService>().SeedAsync(builder.Configuration["AdminAuth:Username"], builder.Configuration["AdminAuth:Password"], builder.Configuration["AdminAuth:DisplayName"] ?? "System Admin");
-}
-
-
-// Ensure Database is Created (for In-Memory)
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<DevTrackDbContext>();
-    if (databaseProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase))
+    var isInMemory = db.Database.IsInMemory();
+    if (isInMemory)
     {
-        context.Database.EnsureCreated();
-        DbInitializer.Initialize(context);
+        await db.Database.EnsureCreatedAsync();
+    }
+
+    await scope.ServiceProvider.GetRequiredService<RbacService>().SeedAsync(builder.Configuration["AdminAuth:Username"], builder.Configuration["AdminAuth:Password"], builder.Configuration["AdminAuth:DisplayName"] ?? "System Admin");
+    if (isInMemory)
+    {
+        await DbInitializer.InitializeAsync(db);
     }
 }
 

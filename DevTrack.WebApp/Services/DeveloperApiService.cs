@@ -1,5 +1,4 @@
-using DevTrack.Domain.Features.Developers;
-using DevTrack.Domain.Features.Developers.Models;
+using DevTrack.Features.TrainingManagement.Developers;
 using DevTrack.Shared;
 
 namespace DevTrack.WebApp.Services;
@@ -13,7 +12,16 @@ public class DeveloperApiService : IDeveloperService
         _api = api;
     }
 
-    public Task<PagedResult<DeveloperResponse>> GetDevelopersAsync(PaginationRequest request) => _api.GetDevelopersAsync(request);
-    public Task<Result<DeveloperDetailResponse>> GetDeveloperByIdAsync(int id) => _api.GetDeveloperByIdAsync(id);
-    public Task<Result<DeveloperResponse>> CreateDeveloperAsync(DeveloperRequest request) => _api.CreateDeveloperAsync(request);
+    public async Task<PagedResult<DeveloperResponse>> GetDevelopersAsync(PaginationRequest request)
+    {
+        return await _api.GetDevelopersAsync(request);
+    }
+    public async Task<Result<DeveloperDetailResponse>> GetDeveloperByIdAsync(int id)
+    {
+        return await _api.GetDeveloperByIdAsync(id);
+    }
+    public async Task<Result<DeveloperResponse>> CreateDeveloperAsync(DeveloperRequest request)
+    {
+        return await _api.CreateDeveloperAsync(request);
+    }
 }

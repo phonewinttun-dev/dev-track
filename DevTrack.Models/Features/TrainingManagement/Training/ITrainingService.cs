@@ -1,7 +1,6 @@
-using DevTrack.Domain.Features.Training.Models;
 using DevTrack.Shared;
 
-namespace DevTrack.Domain.Features.Training;
+namespace DevTrack.Features.TrainingManagement.Training;
 
 public interface ITrainingService
 {

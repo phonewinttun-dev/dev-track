@@ -1,4 +1,4 @@
-using DevTrack.Domain.Features.Dashboard.Models;
+using DevTrack.Features.TrainingManagement.Dashboard;
 using DevTrack.Shared;
 
 namespace DevTrack.WebApp.Services;
@@ -9,9 +9,13 @@ public class DashboardApiClient : ApiClientBase, IDashboardApiClient
     {
     }
 
-    public Task<Result<DashboardResponse>> GetDashboardDataAsync()
-        => GetAsync<Result<DashboardResponse>>("/api/dashboard");
+    public async Task<Result<DashboardResponse>> GetDashboardDataAsync()
+    {
+        return await GetAsync<Result<DashboardResponse>>("/api/dashboard");
+    }
 
-    public Task<Result<List<BatchSummaryModel>>> GetDashboardReportAsync()
-        => GetAsync<Result<List<BatchSummaryModel>>>("/api/dashboard/report");
+    public async Task<Result<List<BatchSummaryModel>>> GetDashboardReportAsync()
+    {
+        return await GetAsync<Result<List<BatchSummaryModel>>>("/api/dashboard/report");
+    }
 }

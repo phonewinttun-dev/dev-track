@@ -1,6 +1,6 @@
-@model DevTrack.Domain.Features.Training.Models.BulkAttendanceRequest
+@model DevTrack.Features.TrainingManagement.Training.BulkAttendanceRequest
 @{
-    var batch = ViewBag.Batch as DevTrack.Domain.Features.Batches.Models.BatchResponse;
+    var batch = ViewBag.Batch as DevTrack.Features.TrainingManagement.Batches.BatchResponse;
     var classDays = ViewBag.ClassDays as List<DateOnly> ?? new List<DateOnly>();
     var targetDate = ViewBag.TargetDate != null ? (DateOnly)ViewBag.TargetDate : DateOnly.FromDateTime(DateTime.Now);
     ViewData["Title"] = $"Mark Attendance - {batch?.BatchName}";

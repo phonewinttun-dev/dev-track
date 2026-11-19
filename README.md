@@ -4,20 +4,19 @@ DevTrack is a comprehensive management system designed to track training batches
 
 ## Project Structure
 
-The solution is divided into five main projects to ensure a clean separation of concerns:
+DevTrack has one backend with two domain modules and a separate ASP.NET Core MVC frontend.
 
-- **DevTrack.Api**: The backend REST API. It handles all database interactions, business logic execution, and exposes endpoints for the WebApp.
-- **DevTrack.WebApp**: An ASP.NET Core MVC application providing a premium user interface. It consumes feature data through the API and checks MVC credentials and permissions against the shared RBAC database.
-- **DevTrack.Domain**: Contains the core business logic, feature-based services, and interfaces (`IBatchService`, `IDeveloperService`, `ITrainingService`).
-- **DevTrack.Database**: Handles data persistence using Entity Framework Core (Database-First). Contains migrations, entities, and the `DevTrackDbContext`.
-- **DevTrack.Shared**: A lightweight project containing shared models, DTOs, and the core `Result<T>` pattern used for consistent error handling across the solution.
+- **DevTrack.Api** is the backend composition root. It registers the modules explicitly, exposes thin controllers, and owns database configuration and startup seeding.
+- **DevTrack.Domain** is the Training Management module. Its feature folders are `Dashboard`, `Batches`, `Developers`, and `Training`. The Attendance menu maps to `Training`, which also owns the schedule and reports.
+- **DevTrack.Domain.Access** owns the `Auth` feature, including credentials, roles, permissions, and bootstrap.
+- **DevTrack.Models** holds typed requests, responses, and feature service contracts. Its `Features/<Module>/<Feature>` folders mirror the domain features and share their namespaces.
+- **DevTrack.Database** owns the EF Core context and persistence mappings used by the domain modules.
+- **DevTrack.Shared** holds the result types, pagination, and shared constants.
+- **DevTrack.WebApp** references Models and reaches the API over HTTP for feature data, login, and live permissions. It owns the MVC views and browser cookie.
 
-## Architecture Highlights
+### Adding a feature
 
-- **API-First Design**: The WebApp uses **IHttpClientFactory** for feature data and shares the RBAC database with the API for cookie login and permission checks.
-- **Service Pattern**: Domain logic is encapsulated in services that implement feature-based interfaces, allowing for easy swapping of implementations (e.g., calling a DB directly vs. calling an API).
-- **Result Pattern**: All service and API operations return a `Result` or `Result<T>` object, ensuring that success/failure states and messages are handled uniformly.
-- **Modern UI**: The WebApp features a premium design with smooth transitions and a focus on visual hierarchy.
+Place business logic in the owning module's `Features/<Feature>` folder and shared DTOs in its matching Models folder. Register the service in that module's DI extension and expose it through a thin API controller. Keep secondary actions such as schedule and export in the menu's feature. If one domain module needs another, put the interface and DTO in Models and register its implementation in the API.
 
 ## Features
 
@@ -36,10 +35,10 @@ The solution is divided into five main projects to ensure a clean separation of 
 - SQL Server
 
 ### Configuration
-1. **Database**: Configure the same SQL Server connection for both hosts and apply `init_db.sql` and `rbac_schema.sql` (see Dynamic RBAC below). For an existing database, rerun `init_db.sql` to add the attendance uniqueness index. Reconcile any duplicate marks for the same batch, developer, and date before applying the index.
+1. **Database**: Configure the SQL Server connection for the API and apply `init_db.sql` and `rbac_schema.sql` (see Dynamic RBAC below). For an existing database, rerun `init_db.sql` to add the attendance uniqueness index. Reconcile any duplicate marks for the same batch, developer, and date before applying the index.
 2. **API URL**: Update the `ApiSettings:BaseUrl` in `DevTrack.WebApp/appsettings.json` to match the API's hosting URL.
-3. **Admin login**: Configure `AdminAuth:Username`, `AdminAuth:Password`, and `AdminAuth:DisplayName` for both hosts through user secrets or environment variables to bootstrap the first database user.
-4. **JWT**: Configure the same `Jwt:Issuer`, `Jwt:Audience`, and `Jwt:SigningKey` in both `DevTrack.WebApp` and `DevTrack.Api`. Use a signing key with at least 32 characters and keep production keys out of committed appsettings files.
+3. **Admin login**: Configure `AdminAuth:Username`, `AdminAuth:Password`, and `AdminAuth:DisplayName` for the API through user secrets or environment variables to bootstrap the first database user.
+4. **JWT**: Configure `Jwt:Issuer`, `Jwt:Audience`, and `Jwt:SigningKey` in `DevTrack.Api`. Use a signing key with at least 32 characters and keep production keys out of committed appsettings files.
 
 ### Running the Application
 1. Start the **DevTrack.Api** project.
@@ -61,20 +60,15 @@ Adapted from `DotNetTrainingBatch0.MvcCookieAuthDynamicRbac` and
 roles receive permissions through `RolePermissions`. Passwords use salted PBKDF2-SHA256.
 MVC signs users in with a cookie and carries an API JWT in its authentication ticket.
 The API also supports direct login through `POST /api/auth/login` with
-`{"username":"...","password":"..."}`. Both hosts check current database grants
-on each protected action, so disabling a user, changing a role, or removing a grant
-applies to existing sessions immediately. JWT permission claims are informational;
+`{"username":"...","password":"..."}`. The API checks current database grants for API operations and answers the MVC
+permission check for each protected action. Disabling a user, changing a role, or
+removing a grant applies to existing sessions immediately. JWT permission claims are informational;
 they do not override database grants.
 
-Configure both hosts with the **same SQL Server database**, JWT issuer, audience,
-and signing key. Run `rbac_schema.sql` once on the existing database, then set
-`DatabaseProvider=SqlServer` and `ConnectionStrings__DefaultConnection` in both hosts.
-The default InMemory provider is for development only: each host has its own store,
-so configure matching bootstrap credentials in both hosts; runtime RBAC changes are
-not shared across those separate stores or persisted after restart.
+Set `DatabaseProvider=SqlServer` and `ConnectionStrings__DefaultConnection` on the API. Run `rbac_schema.sql` once before starting the API. The default InMemory provider is for development only. Its data belongs to the API process and is reset on restart.
 
 Set `AdminAuth__Username`, `AdminAuth__Password`, and optionally
-`AdminAuth__DisplayName` in both hosts to bootstrap the first administrator.
+`AdminAuth__DisplayName` on the API to bootstrap the first administrator.
 The initializer creates that user only when the Users table is empty, grants the
 Admin role all known permissions, and never resets existing passwords or grants.
 After bootstrap, credentials are validated against Users, rather than configuration.

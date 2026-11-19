@@ -1,11 +1,11 @@
-using DevTrack.WebApp.Services;
 using DevTrack.WebApp.Auth;
 using DevTrack.Shared.Security;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using DevTrack.Domain.Features.Dashboard;
+using DevTrack.Features.TrainingManagement.Dashboard;
 using DevTrack.Shared;
 using DevTrack.WebApp.Models;
+using DevTrack.WebApp.Services;
 using Microsoft.AspNetCore.Authorization;
 
 namespace DevTrack.WebApp.Controllers;

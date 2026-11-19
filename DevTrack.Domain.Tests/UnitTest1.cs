@@ -1,9 +1,7 @@
-using DevTrack.Domain.Features.Batches.Models;
-using DevTrack.Domain.Features.Training.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 ﻿using DevTrack.Database.Entities;
-using DevTrack.Domain.Features.Batches;
-using DevTrack.Domain.Features.Training;
+using DevTrack.Features.TrainingManagement.Batches;
+using DevTrack.Features.TrainingManagement.Training;
 using DevTrack.Shared;
 
 namespace DevTrack.Domain.Tests;

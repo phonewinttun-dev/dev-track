@@ -1,6 +1,6 @@
 using DevTrack.Api.Auth;
 using DevTrack.Shared.Security;
-using DevTrack.Domain.Features.Dashboard;
+using DevTrack.Features.TrainingManagement.Dashboard;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DevTrack.Api.Controllers;

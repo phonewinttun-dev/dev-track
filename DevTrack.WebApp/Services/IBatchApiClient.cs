@@ -1,4 +1,4 @@
-using DevTrack.Domain.Features.Batches.Models;
+using DevTrack.Features.TrainingManagement.Batches;
 using DevTrack.Shared;
 
 namespace DevTrack.WebApp.Services;

@@ -1,13 +1,11 @@
-using DevTrack.Domain.Features.Developers.Models;
-using DevTrack.Domain.Features.Training.Models;
 using DevTrack.Database.Entities;
 using DevTrack.Shared;
-using DevTrack.Domain.Features.Training;
+using DevTrack.Features.TrainingManagement.Training;
 using Microsoft.EntityFrameworkCore;
 
 using Microsoft.Extensions.Logging;
 
-namespace DevTrack.Domain.Features.Developers;
+namespace DevTrack.Features.TrainingManagement.Developers;
 
 public class DeveloperService : IDeveloperService
 {

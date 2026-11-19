@@ -1,7 +1,6 @@
-using DevTrack.Domain.Features.Developers.Models;
 using DevTrack.Shared;
 
-namespace DevTrack.Domain.Features.Developers;
+namespace DevTrack.Features.TrainingManagement.Developers;
 
 public interface IDeveloperService
 {

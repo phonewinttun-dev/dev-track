@@ -1,11 +1,10 @@
-using DevTrack.Domain.Features.Training.Models;
 using DevTrack.Database.Entities;
 using DevTrack.Shared;
 using Microsoft.EntityFrameworkCore;
 
 using Microsoft.Extensions.Logging;
 
-namespace DevTrack.Domain.Features.Training;
+namespace DevTrack.Features.TrainingManagement.Training;
 
 public class TrainingService : ITrainingService
 {

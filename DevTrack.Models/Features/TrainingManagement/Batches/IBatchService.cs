@@ -1,7 +1,6 @@
-using DevTrack.Domain.Features.Batches.Models;
 using DevTrack.Shared;
 
-namespace DevTrack.Domain.Features.Batches;
+namespace DevTrack.Features.TrainingManagement.Batches;
 
 public interface IBatchService
 {

@@ -1,17 +1,15 @@
-using System;
-using System.Linq;
 using DevTrack.Database.Entities;
+using Microsoft.EntityFrameworkCore;
 
-namespace DevTrack.Database;
+namespace DevTrack.Domain;
 
 public static class DbInitializer
 {
-    public static void Initialize(DevTrackDbContext context)
+    public static async Task InitializeAsync(DevTrackDbContext context, CancellationToken cancellationToken = default)
     {
-        // Look for any developers.
-        if (context.Developers.Any())
+        if (await context.Developers.AnyAsync(cancellationToken))
         {
-            return;   // DB has been seeded
+            return;
         }
 
         var developers = new Developer[]
@@ -27,7 +25,7 @@ public static class DbInitializer
         };
 
         context.Developers.AddRange(developers);
-        context.SaveChanges();
+        await context.SaveChangesAsync(cancellationToken);
 
         var batches = new Batch[]
         {
@@ -36,7 +34,7 @@ public static class DbInitializer
         };
 
         context.Batches.AddRange(batches);
-        context.SaveChanges();
+        await context.SaveChangesAsync(cancellationToken);
 
         var batchDevelopers = new BatchDeveloper[]
         {
@@ -51,7 +49,7 @@ public static class DbInitializer
         };
 
         context.BatchDevelopers.AddRange(batchDevelopers);
-        context.SaveChanges();
+        await context.SaveChangesAsync(cancellationToken);
 
         var calendars = new TrainingCalendar[]
         {
@@ -69,7 +67,7 @@ public static class DbInitializer
         };
 
         context.TrainingCalendars.AddRange(calendars);
-        context.SaveChanges();
+        await context.SaveChangesAsync(cancellationToken);
 
         var attendances = new AttendanceRecord[]
         {
@@ -88,7 +86,7 @@ public static class DbInitializer
         };
 
         context.AttendanceRecords.AddRange(attendances);
-        context.SaveChanges();
+        await context.SaveChangesAsync(cancellationToken);
 
         var leaves = new LeaveRecord[]
         {
@@ -97,7 +95,7 @@ public static class DbInitializer
         };
 
         context.LeaveRecords.AddRange(leaves);
-        context.SaveChanges();
+        await context.SaveChangesAsync(cancellationToken);
 
         var submissions = new AssignmentSubmission[]
         {
@@ -107,6 +105,6 @@ public static class DbInitializer
         };
 
         context.AssignmentSubmissions.AddRange(submissions);
-        context.SaveChanges();
+        await context.SaveChangesAsync(cancellationToken);
     }
 }

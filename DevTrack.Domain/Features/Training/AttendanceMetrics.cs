@@ -1,6 +1,6 @@
 using DevTrack.Database.Entities;
 
-namespace DevTrack.Domain.Features.Training;
+namespace DevTrack.Features.TrainingManagement.Training;
 
 internal sealed class AttendanceMetrics
 {

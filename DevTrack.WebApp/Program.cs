@@ -1,13 +1,9 @@
-using DevTrack.Database.Entities;
-using Microsoft.EntityFrameworkCore;
-using DevTrack.Domain.Security;
 using DevTrack.WebApp.Services;
 using DevTrack.WebApp.Auth;
-using DevTrack.Domain.Features.Batches;
-using DevTrack.Domain.Features.Developers;
-using DevTrack.Domain.Features.Training;
-using DevTrack.Domain.Features.Dashboard;
-using DevTrack.Shared.Security;
+using DevTrack.Features.TrainingManagement.Batches;
+using DevTrack.Features.TrainingManagement.Developers;
+using DevTrack.Features.TrainingManagement.Training;
+using DevTrack.Features.TrainingManagement.Dashboard;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
@@ -25,11 +21,6 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container.
-builder.Services.AddOptions<JwtOptions>()
-    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
-    .Validate(options => options.IsValid(), "Jwt must include Issuer, Audience, a SigningKey of at least 32 characters, and a positive ExpiresMinutes value.")
-    .ValidateOnStart();
-
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -41,7 +32,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddScoped<RbacService>();
 
 builder.Services.AddControllersWithViews(options =>
 {
@@ -50,7 +40,7 @@ builder.Services.AddControllersWithViews(options =>
 });
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IAdminJwtTokenService, AdminJwtTokenService>();
+builder.Services.AddScoped<AuthApiClient>();
 builder.Services.AddTransient<AdminJwtAuthorizationHandler>();
 
 var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7267";
@@ -73,19 +63,7 @@ builder.Services.AddScoped<IDeveloperService, DeveloperApiService>();
 builder.Services.AddScoped<ITrainingService, TrainingApiService>();
 builder.Services.AddScoped<IDashboardService, DashboardApiService>();
 
-var databaseProvider = builder.Configuration.GetValue<string>("DatabaseProvider") ?? "SqlServer";
-builder.Services.AddDbContext<DevTrackDbContext>(options =>
-{
-    if (databaseProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase)) options.UseInMemoryDatabase(builder.Configuration["DatabaseName"] ?? "DevTrackRbac");
-    else options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
-});
 var app = builder.Build();
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<DevTrackDbContext>();
-    if (databaseProvider.Equals("InMemory", StringComparison.OrdinalIgnoreCase)) db.Database.EnsureCreated();
-    await scope.ServiceProvider.GetRequiredService<RbacService>().SeedAsync(builder.Configuration["AdminAuth:Username"], builder.Configuration["AdminAuth:Password"], builder.Configuration["AdminAuth:DisplayName"] ?? "System Admin");
-}
 
 
 // Configure the HTTP request pipeline.

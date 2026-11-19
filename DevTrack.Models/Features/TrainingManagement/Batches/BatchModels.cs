@@ -1,8 +1,4 @@
-using DevTrack.Database.Entities;
-using DevTrack.Shared;
-using Microsoft.EntityFrameworkCore;
-
-namespace DevTrack.Domain.Features.Batches.Models;
+namespace DevTrack.Features.TrainingManagement.Batches;
 
 public class BatchRequest
 {

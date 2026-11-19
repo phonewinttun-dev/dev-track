@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 using Microsoft.Extensions.Logging;
 
-namespace DevTrack.Domain.Security;
+namespace DevTrack.Features.Access.Auth;
 
 public class RbacService(DevTrackDbContext db, ILogger<RbacService> logger)
 {

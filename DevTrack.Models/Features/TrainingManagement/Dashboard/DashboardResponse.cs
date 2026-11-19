@@ -1,4 +1,4 @@
-namespace DevTrack.Domain.Features.Dashboard.Models;
+namespace DevTrack.Features.TrainingManagement.Dashboard;
 
 public class DashboardResponse
 {

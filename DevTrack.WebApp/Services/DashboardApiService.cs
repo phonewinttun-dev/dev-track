@@ -1,5 +1,4 @@
-using DevTrack.Domain.Features.Dashboard;
-using DevTrack.Domain.Features.Dashboard.Models;
+using DevTrack.Features.TrainingManagement.Dashboard;
 using DevTrack.Shared;
 
 namespace DevTrack.WebApp.Services;
@@ -13,7 +12,13 @@ public class DashboardApiService : IDashboardService
         _api = api;
     }
 
-    public Task<Result<DashboardResponse>> GetDashboardDataAsync() => _api.GetDashboardDataAsync();
+    public async Task<Result<DashboardResponse>> GetDashboardDataAsync()
+    {
+        return await _api.GetDashboardDataAsync();
+    }
 
-    public Task<Result<List<BatchSummaryModel>>> GetDashboardReportAsync() => _api.GetDashboardReportAsync();
+    public async Task<Result<List<BatchSummaryModel>>> GetDashboardReportAsync()
+    {
+        return await _api.GetDashboardReportAsync();
+    }
 }

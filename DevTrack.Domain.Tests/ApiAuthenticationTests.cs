@@ -6,22 +6,23 @@ using System.Net;
 using System.Net.Http.Headers;
 using DevTrack.Api;
 using DevTrack.Shared.Security;
-using DevTrack.WebApp.Auth;
+using DevTrack.Features.Access.Auth;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 
 namespace DevTrack.Domain.Tests;
 
 public class ApiAuthenticationTests
 {
-    [Fact]
-    public async Task BatchesEndpoint_ReturnsUnauthorized_WithoutToken()
+    [Theory]
+    [InlineData("/api/batches")]
+    [InlineData("/api/auth/permissions")]
+    public async Task ProtectedEndpoint_ReturnsUnauthorized_WithoutToken(string path)
     {
         await using var factory = CreateFactory();
         var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var response = await client.GetAsync("/api/batches");
+        var response = await client.GetAsync(path);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -50,7 +51,7 @@ public class ApiAuthenticationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    private static WebApplicationFactory<ApiAssemblyMarker> CreateFactory()
+    internal static WebApplicationFactory<ApiAssemblyMarker> CreateFactory()
         => new WebApplicationFactory<ApiAssemblyMarker>()
             .WithWebHostBuilder(builder =>
             {

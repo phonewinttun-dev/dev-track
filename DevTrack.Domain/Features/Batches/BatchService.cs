@@ -1,11 +1,10 @@
-using DevTrack.Domain.Features.Batches.Models;
 using DevTrack.Database.Entities;
 using DevTrack.Shared;
 using Microsoft.EntityFrameworkCore;
 
 using Microsoft.Extensions.Logging;
 
-namespace DevTrack.Domain.Features.Batches;
+namespace DevTrack.Features.TrainingManagement.Batches;
 
 public class BatchService : IBatchService
 {

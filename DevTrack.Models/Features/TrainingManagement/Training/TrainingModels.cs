@@ -1,7 +1,4 @@
-using DevTrack.Database.Entities;
-using DevTrack.Shared;
-
-namespace DevTrack.Domain.Features.Training.Models;
+namespace DevTrack.Features.TrainingManagement.Training;
 
 public class TrainingCalendarRequest
 {

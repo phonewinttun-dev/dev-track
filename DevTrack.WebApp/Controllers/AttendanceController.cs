@@ -1,9 +1,9 @@
-using DevTrack.WebApp.Services;
 using DevTrack.WebApp.Auth;
 using DevTrack.Shared.Security;
-using DevTrack.Domain.Features.Training;
-using DevTrack.Domain.Features.Batches;
+using DevTrack.Features.TrainingManagement.Training;
+using DevTrack.Features.TrainingManagement.Batches;
 using DevTrack.Shared;
+using DevTrack.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DevTrack.WebApp.Controllers;
@@ -72,7 +72,7 @@ public class AttendanceController : Controller
 
     [HttpPost]
     [Permission(Permissions.TrainingWrite)]
-    public async Task<IActionResult> Mark(DevTrack.Domain.Features.Training.Models.BulkAttendanceRequest request)
+    public async Task<IActionResult> Mark(DevTrack.Features.TrainingManagement.Training.BulkAttendanceRequest request)
     {
         var result = await _trainingService.MarkBulkAttendanceAsync(request);
         if (result.IsSuccess)

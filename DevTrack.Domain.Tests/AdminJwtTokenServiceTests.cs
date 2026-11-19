@@ -2,7 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using DevTrack.Shared.Security;
-using DevTrack.WebApp.Auth;
+using DevTrack.Api.Auth;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -13,7 +13,7 @@ public class AdminJwtTokenServiceTests
     [Fact]
     public void CreateAdminToken_IncludesAdminIdentityAndValidatesWithSigningKey()
     {
-        var service = new AdminJwtTokenService(Options.Create(new JwtOptions
+        var service = new JwtTokenService(Options.Create(new JwtOptions
         {
             Issuer = AuthTestSettings.Issuer,
             Audience = AuthTestSettings.Audience,

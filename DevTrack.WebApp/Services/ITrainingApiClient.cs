@@ -1,4 +1,4 @@
-using DevTrack.Domain.Features.Training.Models;
+using DevTrack.Features.TrainingManagement.Training;
 using DevTrack.Shared;
 
 namespace DevTrack.WebApp.Services;

@@ -1,7 +1,6 @@
-using DevTrack.Domain.Features.Dashboard.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using DevTrack.Database.Entities;
-using DevTrack.Domain.Features.Dashboard;
+using DevTrack.Features.TrainingManagement.Dashboard;
 
 namespace DevTrack.Domain.Tests;
 

@@ -1,5 +1,4 @@
-using DevTrack.Domain.Features.Training;
-using DevTrack.Domain.Features.Training.Models;
+using DevTrack.Features.TrainingManagement.Training;
 using DevTrack.Shared;
 
 namespace DevTrack.WebApp.Services;
@@ -13,16 +12,33 @@ public class TrainingApiService : ITrainingService
         _api = api;
     }
 
-    public Task<Result<List<DateOnly>>> GetClassDaysAsync(int batchId) => _api.GetClassDaysAsync(batchId);
+    public async Task<Result<List<DateOnly>>> GetClassDaysAsync(int batchId)
+    {
+        return await _api.GetClassDaysAsync(batchId);
+    }
 
-    public Task<PagedResult<TrainingCalendarResponse>> GetScheduleAsync(int batchId, PaginationRequest request) => _api.GetScheduleAsync(batchId, request);
+    public async Task<PagedResult<TrainingCalendarResponse>> GetScheduleAsync(int batchId, PaginationRequest request)
+    {
+        return await _api.GetScheduleAsync(batchId, request);
+    }
     
-    public Task<Result<BulkAttendanceRequest>> GetAttendanceForDateAsync(int batchId, DateOnly date) 
-        => _api.GetAttendanceForDateAsync(batchId, date.ToString("yyyy-MM-dd"));
+    public async Task<Result<BulkAttendanceRequest>> GetAttendanceForDateAsync(int batchId, DateOnly date)
+    {
+        return await _api.GetAttendanceForDateAsync(batchId, date.ToString("yyyy-MM-dd"));
+    }
 
-    public Task<Result> MarkBulkAttendanceAsync(BulkAttendanceRequest request) => _api.MarkBulkAttendanceAsync(request);
+    public async Task<Result> MarkBulkAttendanceAsync(BulkAttendanceRequest request)
+    {
+        return await _api.MarkBulkAttendanceAsync(request);
+    }
     
-    public Task<PagedResult<AttendanceSummaryResponse>> GetAttendanceSummaryAsync(int batchId, PaginationRequest request) => _api.GetAttendanceSummaryAsync(batchId, request);
+    public async Task<PagedResult<AttendanceSummaryResponse>> GetAttendanceSummaryAsync(int batchId, PaginationRequest request)
+    {
+        return await _api.GetAttendanceSummaryAsync(batchId, request);
+    }
 
-    public Task<Result<List<AttendanceSummaryResponse>>> GetFullAttendanceSummaryAsync(int batchId) => _api.GetFullAttendanceSummaryAsync(batchId);
+    public async Task<Result<List<AttendanceSummaryResponse>>> GetFullAttendanceSummaryAsync(int batchId)
+    {
+        return await _api.GetFullAttendanceSummaryAsync(batchId);
+    }
 }

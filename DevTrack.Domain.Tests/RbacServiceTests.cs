@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using DevTrack.Database.Entities;
-using DevTrack.Domain.Security;
+using DevTrack.Features.Access.Auth;
 using DevTrack.Shared.Security;
 
 namespace DevTrack.Domain.Tests;

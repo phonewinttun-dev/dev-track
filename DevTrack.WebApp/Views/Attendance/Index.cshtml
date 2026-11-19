@@ -1,7 +1,7 @@
-@model DevTrack.Shared.PagedResult<DevTrack.Domain.Features.Training.Models.AttendanceSummaryResponse>
+@model DevTrack.Shared.PagedResult<DevTrack.Features.TrainingManagement.Training.AttendanceSummaryResponse>
 @{
     ViewData["Title"] = "Attendance Dashboard";
-    var batches = ViewBag.Batches as List<DevTrack.Domain.Features.Batches.Models.BatchResponse>;
+    var batches = ViewBag.Batches as List<DevTrack.Features.TrainingManagement.Batches.BatchResponse>;
     int? selectedBatchId = ViewBag.SelectedBatchId as int?;
 }
 

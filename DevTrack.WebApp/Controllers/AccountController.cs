@@ -1,31 +1,16 @@
-using DevTrack.Domain.Security;
+using DevTrack.Features.Access.Auth;
 using System.Security.Claims;
-using DevTrack.Shared.Security;
 using DevTrack.WebApp.Auth;
 using DevTrack.WebApp.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 
 namespace DevTrack.WebApp.Controllers;
 
-public class AccountController : Controller
+public class AccountController(AuthApiClient authApi) : Controller
 {
-    private readonly RbacService _credentialValidator;
-    private readonly IAdminJwtTokenService _jwtTokenService;
-
-
-    public AccountController(
-        RbacService credentialValidator,
-        IAdminJwtTokenService jwtTokenService)
-    {
-        _credentialValidator = credentialValidator;
-        _jwtTokenService = jwtTokenService;
-
-    }
-
     [AllowAnonymous]
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
@@ -41,14 +26,14 @@ public class AccountController : Controller
     [AllowAnonymous]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginViewModel model)
+    public async Task<IActionResult> Login(LoginViewModel model, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
             return View(model);
         }
 
-        var user = await _credentialValidator.LoginAsync(model.Username, model.Password);
+        var user = await authApi.LoginAsync(new LoginRequest(model.Username, model.Password), cancellationToken);
         if (user is null)
         {
             ModelState.AddModelError(string.Empty, "Invalid username or password.");
@@ -58,13 +43,12 @@ public class AccountController : Controller
         var displayName = user.DisplayName;
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new(ClaimTypes.Name, displayName),
-            new(ClaimTypes.Role, user.Role.RoleName)
+            new(ClaimTypes.Role, user.Role)
         };
 
-        claims.AddRange((await _credentialValidator.GetPermissionsAsync(user.Id)).Select(x => new Claim("permission", x)));
-        var accessToken = _jwtTokenService.CreateToken(claims);
+        claims.AddRange(user.Permissions.Select(x => new Claim("permission", x)));
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
         var authProperties = new AuthenticationProperties
@@ -74,7 +58,7 @@ public class AccountController : Controller
         };
         authProperties.StoreTokens(new[]
         {
-            new AuthenticationToken { Name = "access_token", Value = accessToken }
+            new AuthenticationToken { Name = "access_token", Value = user.AccessToken }
         });
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);

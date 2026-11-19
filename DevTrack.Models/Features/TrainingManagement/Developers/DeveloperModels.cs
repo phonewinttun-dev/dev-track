@@ -1,8 +1,4 @@
-using DevTrack.Database.Entities;
-using DevTrack.Shared;
-using Microsoft.EntityFrameworkCore;
-
-namespace DevTrack.Domain.Features.Developers.Models;
+namespace DevTrack.Features.TrainingManagement.Developers;
 
 public class DeveloperRequest
 {

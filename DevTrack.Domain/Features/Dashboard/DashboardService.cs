@@ -1,11 +1,10 @@
-using DevTrack.Domain.Features.Dashboard.Models;
 using DevTrack.Database.Entities;
 using DevTrack.Shared;
 using Microsoft.EntityFrameworkCore;
 
 using Microsoft.Extensions.Logging;
 
-namespace DevTrack.Domain.Features.Dashboard;
+namespace DevTrack.Features.TrainingManagement.Dashboard;
 
 public class DashboardService : IDashboardService
 {

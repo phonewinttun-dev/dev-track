@@ -1,7 +1,6 @@
 using DevTrack.WebApp.Auth;
 using DevTrack.Shared.Security;
-using DevTrack.Domain.Features.Developers;
-using DevTrack.Domain.Features.Developers.Models;
+using DevTrack.Features.TrainingManagement.Developers;
 using DevTrack.Shared;
 using Microsoft.AspNetCore.Mvc;
 

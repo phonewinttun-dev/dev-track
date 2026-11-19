@@ -1,7 +1,6 @@
-using DevTrack.Domain.Features.Dashboard.Models;
 using DevTrack.Shared;
 
-namespace DevTrack.Domain.Features.Dashboard;
+namespace DevTrack.Features.TrainingManagement.Dashboard;
 
 public interface IDashboardService
 {

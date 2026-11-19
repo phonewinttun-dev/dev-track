@@ -1,6 +1,6 @@
-@model List<DevTrack.Domain.Features.Batches.Models.BatchAssignmentModel>
+@model List<DevTrack.Features.TrainingManagement.Batches.BatchAssignmentModel>
 @{
-    var batch = ViewBag.Batch as DevTrack.Domain.Features.Batches.Models.BatchResponse;
+    var batch = ViewBag.Batch as DevTrack.Features.TrainingManagement.Batches.BatchResponse;
     ViewData["Title"] = "Manage Developers - " + batch?.BatchName;
 }
 

@@ -6,6 +6,8 @@ COPY ["global.json", "./"]
 COPY ["DevTrack.Api/DevTrack.Api.csproj", "DevTrack.Api/"]
 COPY ["DevTrack.WebApp/DevTrack.WebApp.csproj", "DevTrack.WebApp/"]
 COPY ["DevTrack.Domain/DevTrack.Domain.csproj", "DevTrack.Domain/"]
+COPY ["DevTrack.Domain.Access/DevTrack.Domain.Access.csproj", "DevTrack.Domain.Access/"]
+COPY ["DevTrack.Models/DevTrack.Models.csproj", "DevTrack.Models/"]
 COPY ["DevTrack.Database/DevTrack.Database.csproj", "DevTrack.Database/"]
 COPY ["DevTrack.Shared/DevTrack.Shared.csproj", "DevTrack.Shared/"]
 
@@ -29,11 +31,11 @@ COPY --from=build /app/webapp ./webapp
 # Create a startup script to run both
 RUN echo '#!/bin/bash\n\
 # Start the API in the background on localhost:5000\n\
-ASPNETCORE_URLS=http://localhost:5000 dotnet /app/api/DevTrack.Api.dll & \n\
+ASPNETCORE_URLS=http://localhost:5000 dotnet /app/api/DevTrack.Api.dll --contentRoot /app/api & \n\
 API_PID=$!\n\
 \n\
 # Start the WebApp in the foreground on the port provided by Render\n\
-ASPNETCORE_URLS=http://0.0.0.0:${PORT:-8080} dotnet /app/webapp/DevTrack.WebApp.dll\n\
+ASPNETCORE_URLS=http://0.0.0.0:${PORT:-8080} dotnet /app/webapp/DevTrack.WebApp.dll --contentRoot /app/webapp\n\
 \n\
 # Cleanup\n\
 kill $API_PID' > /app/run.sh

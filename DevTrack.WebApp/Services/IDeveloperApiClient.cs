@@ -1,4 +1,4 @@
-using DevTrack.Domain.Features.Developers.Models;
+using DevTrack.Features.TrainingManagement.Developers;
 using DevTrack.Shared;
 
 namespace DevTrack.WebApp.Services;
