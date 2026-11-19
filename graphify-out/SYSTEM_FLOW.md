@@ -1,5 +1,7 @@
 # DevTrack system flow
 
+[Open the interactive system flow](system-flow.html)
+
 DevTrack runs an ASP.NET Core MVC frontend and an API backend. Razor renders HTML, Tailwind CSS styles the pages, and jQuery supports client-side scripts and validation. The shared mobile menu uses native JavaScript. The API owns authentication, authorization, training business rules, and persistence. Both apps use contracts from Models and result types from Shared.
 
 ## Architecture

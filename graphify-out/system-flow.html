@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>DevTrack · System flow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="../DevTrack.WebApp/wwwroot/lib/jquery/dist/jquery.min.js" defer></script>
+  <style>
+    :root { color-scheme: dark; --canvas:#0d1320; --panel:#121c2d; --line:#2b3c52; --muted:#a8b8ce; --ink:#edf4ff; --accent:#75edc4; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:radial-gradient(ellipse at 70% -20%,#223c57,transparent 55%),var(--canvas); font:15px/1.55 system-ui,sans-serif; }
+    .shell { width:min(100% - 32px,1100px); margin-inline:auto; }
+    .bar { min-height:64px; border-bottom:1px solid var(--line); }
+    .brand { color:var(--ink); font-weight:750; letter-spacing:-.02em; }
+    .brand-mark { display:inline-grid; place-items:center; width:30px; height:30px; border:1px solid #3d796e; border-radius:8px; color:var(--accent); }
+    .hero { padding-block:clamp(36px,7vw,76px) 30px; }
+    h1 { margin:0; font-size:clamp(2.7rem,7vw,5rem); font-weight:760; letter-spacing:-.075em; line-height:1.04; }
+    .hero p { color:var(--muted); margin:14px 0 0; max-width:46ch; }
+    .switcher { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px; }
+    .switcher button,.controls button { min-height:44px; padding:8px 14px; color:var(--muted); border:1px solid var(--line); border-radius:9px; background:#142031; font-weight:650; }
+    .switcher button[aria-pressed="true"] { border-color:#54bfa3; background:#203c3c; color:var(--accent); }
+    button { cursor:pointer; font:inherit; }
+    button:focus-visible,a:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+    button:disabled { opacity:.45; cursor:default; }
+    .workspace { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(0,1fr); gap:18px; padding-bottom:40px; }
+    .surface { min-width:0; border:1px solid var(--line); border-radius:17px; background:var(--panel); }
+    .diagram { padding:clamp(14px,3vw,27px); background-image:radial-gradient(#2b3c52 1px,transparent 1px); background-size:18px 18px; }
+    .stage { display:grid; grid-template-columns:repeat(var(--columns,1),minmax(0,1fr)); gap:10px; }
+    .node { text-align:left; padding:12px; min-height:70px; border:1px solid #3b4e68; border-radius:11px; background:#162438; color:var(--ink); transition:background .15s,border-color .15s; }
+    .node:hover,.controls button:not(:disabled):hover { border-color:var(--accent); }
+    .node[aria-pressed="true"] { border-color:var(--accent); background:#203b41; }
+    .node strong,.node span { display:block; }
+    .node span { font-size:.8rem; color:var(--muted); overflow-wrap:anywhere; }
+    .node .layer, .details .layer { color:var(--layer-ink); font-size:.7rem; font-weight:750; letter-spacing:.09em; text-transform:uppercase; margin:0 0 5px; }
+    [data-layer="Browser"] { --layer-ink:#f3ca82; }
+    [data-layer="MVC"] { --layer-ink:#a6caff; }
+    [data-layer="API"] { --layer-ink:#b9b0ff; }
+    [data-layer="Domain"] { --layer-ink:#75edc4; }
+    [data-layer="Database"] { --layer-ink:#f8a9be; }
+    .facts { margin:18px 0; display:grid; gap:10px; }
+    .facts div { border-top:1px solid var(--line); padding-top:8px; min-width:0; }
+    .facts dt { color:var(--muted); font-size:.77rem; font-weight:700; }
+    .facts dd { margin:2px 0 0; overflow-wrap:anywhere; }
+    .connector { display:flex; align-items:center; justify-content:center; gap:7px; min-height:33px; color:var(--muted); font-size:.77rem; text-align:center; }
+    .connector i { color:var(--accent); font-style:normal; }
+    .details { padding:clamp(17px,3vw,27px); display:flex; flex-direction:column; }
+    .details h2 { margin:0; font-size:1.75rem; line-height:1.2; font-weight:730; letter-spacing:-.04em; overflow-wrap:anywhere; }
+    .details p { color:var(--muted); margin:12px 0; }
+    .details a,.bar a { color:var(--accent); text-decoration:underline; text-underline-offset:4px; }
+    #step-count { color:var(--accent); font-size:.78rem; margin:0 0 10px; }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:auto; padding-top:24px; }
+    [hidden] { display:none !important; }
+    @media (max-width:740px) { .workspace { grid-template-columns:1fr; gap:12px; } }
+    @media (max-width:370px) { .stage { gap:7px; } .node { padding:9px; } }
+    @media (prefers-reduced-motion:reduce) { .node { transition:none; } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="shell flex min-h-16 items-center justify-between gap-4">
+      <div class="brand flex items-center gap-2"><span aria-hidden="true" class="brand-mark">↗</span> DevTrack</div>
+      <a href="graph.html">Graphify explorer</a>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="hero">
+      <h1>System flow</h1>
+      <p>Follow a request from the browser through MVC, the API, and the database. Select any step to see what it does.</p>
+    </section>
+    <div class="switcher" role="group" aria-label="Choose a system flow">
+      <button type="button" data-flow="architecture" aria-pressed="true">Architecture</button>
+    </div>
+    <noscript><p>JavaScript is required for the explorer. Read the <a href="SYSTEM_FLOW.md">system-flow document</a> for the full flow.</p></noscript>
+    <div class="workspace">
+      <section id="diagram" class="surface diagram" aria-label="Flow steps"></section>
+      <aside class="surface details" aria-labelledby="step-title">
+        <div aria-live="polite" aria-atomic="true">
+          <p id="step-count"></p>
+          <p id="step-layer" class="layer"></p>
+          <h2 id="step-title">Architecture</h2>
+          <p id="step-description"></p>
+          <dl class="facts" id="step-facts" hidden>
+            <div><dt id="request-label">Request</dt><dd id="step-request"></dd></div>
+            <div><dt id="permission-label">Required permission</dt><dd id="step-permission"></dd></div>
+            <div><dt id="result-label">Result</dt><dd id="step-result"></dd></div>
+          </dl>
+          <a id="step-source" href="SYSTEM_FLOW.md">View source</a>
+        </div>
+        <div id="controls" class="controls" hidden>
+          <button type="button" id="previous">← Previous</button>
+          <button type="button" id="next">Next →</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (!window.jQuery) {
+        document.getElementById("step-description").textContent = "jQuery could not load. The system-flow document is still available.";
+        return;
+      }
+      const $ = window.jQuery;
+      const flows = {
+        architecture: {
+          connectors: ["Pages, forms, and session cookie", "HTTP JSON and bearer token", "Feature services and live permissions", "EF Core reads and writes"],
+          stages: [
+            [["Browser", "HTML · Tailwind CSS · jQuery", "The browser renders Razor-generated HTML and sends page and form requests to MVC.", "../DevTrack.WebApp/Views/Shared/_Layout.cshtml", "Browser"]],
+            [["DevTrack.WebApp", "MVC controllers and Razor views", "MVC owns the browser session and uses shared DTOs to call the API.", "../DevTrack.WebApp/Auth/PermissionAttribute.cs", "MVC"]],
+            [["DevTrack.Api", "HTTP endpoints and dependency registration", "The API routes authorized requests to the Access or Training Management module.", "../DevTrack.Api/Auth/PermissionAttribute.cs", "API"]],
+            [["Access module", "Account login and role grants", "RbacService validates credentials and resolves permissions from the user’s current active account and role.", "../DevTrack.Domain.Access/Features/Auth/RbacService.cs", "Domain"],
+             ["Training Management", "Dashboard, batches, developers, attendance", "Feature services apply training rules and return typed results.", "../DevTrack.Domain/Features/Training/TrainingService.cs", "Domain"]],
+            [["Database", "SQL Server or in-memory learning data", "DevTrackDbContext manages persistence. Render uses SQL Server, while learning mode uses an in-memory store.", "../DevTrack.Database/Entities/DevTrackDbContext.cs", "Database"]]
+          ]
+        }
+      };
+      let flowName = "architecture";
+      let currentStep = 0;
+      let steps = [];
+
+      function selectStep(index) {
+        currentStep = index;
+        const [title, , description, source, layer, request, permission, result] = steps[index];
+        const architecture = flowName === "architecture";
+        $("#diagram button").attr("aria-pressed", "false").eq(index).attr("aria-pressed", "true");
+        $("#step-count").text(`Step ${index + 1} of ${steps.length}`);
+        $("#step-title").text(title);
+        $("#step-layer").attr("data-layer", layer).text(layer);
+        $("#step-description").text(description);
+        $("#step-source").attr("href", source);
+        $("#step-facts").prop("hidden", request === undefined);
+        $("#request-label").text(architecture ? "Receives" : "Request");
+        $("#permission-label").text(architecture ? "Permission checks" : "Required permission");
+        $("#result-label").text(architecture ? "Passes onward" : "Result");
+        $("#step-request").text(request ?? "");
+        $("#step-permission").text(permission ?? "");
+        $("#step-result").text(result ?? "");
+        $("#previous").prop("disabled", index === 0);
+        $("#next").prop("disabled", index === steps.length - 1);
+      }
+
+      function renderFlow(name, selectedStep = 0) {
+        flowName = name;
+        const flow = flows.architecture;
+        steps = flow.stages.flat();
+        const $diagram = $("#diagram").empty();
+        let index = 0;
+        flow.stages.forEach((stage, row) => {
+          if (row > 0) {
+            const $connector = $("<div>", { class: "connector" });
+            $connector.append($("<i>", { "aria-hidden": "true" }).text("↓"), document.createTextNode(flow.connectors[row - 1]));
+            $diagram.append($connector);
+          }
+          const $stage = $("<div>", { class: "stage" }).css("--columns", stage.length);
+          stage.forEach(() => {
+            const [title, subtitle, , , layer] = steps[index];
+            const $node = $("<button>", { type: "button", class: "node", "data-step": index++ });
+            $node.append($("<span>", { class: "layer", "data-layer": layer }).text(layer), $("<strong>").text(title), $("<span>").text(subtitle));
+            $stage.append($node);
+          });
+          $diagram.append($stage);
+        });
+        $("#controls").prop("hidden", false);
+        selectStep(Math.min(selectedStep, steps.length - 1));
+      }
+
+      $("[data-flow]").on("click", function () {
+        $("[data-flow]").attr("aria-pressed", "false");
+        $(this).attr("aria-pressed", "true");
+        renderFlow($(this).data("flow"));
+      });
+      $("#diagram").on("click", "[data-step]", function () {
+        selectStep(Number(this.dataset.step));
+      });
+      $("#previous").on("click", () => selectStep(currentStep - 1));
+      $("#next").on("click", () => selectStep(currentStep + 1));
+      renderFlow("architecture");
+    });
+  </script>
+</body>
+</html>
