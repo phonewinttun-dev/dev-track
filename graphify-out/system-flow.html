@@ -71,11 +71,17 @@
     </section>
     <div class="switcher" role="group" aria-label="Choose a system flow">
       <button type="button" data-flow="architecture" aria-pressed="false">Architecture</button>
+      <button type="button" data-flow="signin" aria-pressed="false">Sign-in &amp; permissions</button>
       <button type="button" data-flow="attendance" aria-pressed="true">Attendance</button>
     </div>
     <div id="attendance-outcome" class="switcher" role="group" aria-label="Choose an attendance submission outcome" hidden>
       <button type="button" data-outcome="valid" aria-pressed="true">Valid submission</button>
       <button type="button" data-outcome="invalid" aria-pressed="false">Invalid submission</button>
+    </div>
+    <div id="signin-outcome" class="switcher" role="group" aria-label="Choose a sign-in and permissions scenario" hidden>
+      <button type="button" data-session="success" aria-pressed="true">Successful sign-in</button>
+      <button type="button" data-session="expired" aria-pressed="false">Expired session</button>
+      <button type="button" data-session="revoked" aria-pressed="false">Revoked permission</button>
     </div>
     <noscript><p>JavaScript is required for the explorer. Read the <a href="SYSTEM_FLOW.md">system-flow document</a> for the full flow.</p></noscript>
     <div class="workspace">
@@ -120,6 +126,47 @@
           ]
         }
       };
+      const accountController = "../DevTrack.WebApp/Controllers/AccountController.cs";
+      const authController = "../DevTrack.Api/Controllers/AuthController.cs";
+      const mvcPermissionFilter = "../DevTrack.WebApp/Auth/PermissionAttribute.cs";
+      const rbacService = "../DevTrack.Domain.Access/Features/Auth/RbacService.cs";
+      const dashboardRead = "dashboard.read";
+      const liveGrants = "GET /api/auth/permissions";
+      const signedInRequest = ["Open the dashboard", "Browser sends the session cookie", "The cookie links the browser request to the MVC authentication ticket. The examples use the dashboard as the protected page.", "../DevTrack.WebApp/Controllers/HomeController.cs", "Browser", "GET / · MVC cookie", dashboardRead, "MVC begins authorization for the dashboard."];
+      const requestGrants = ["Request current grants", "MVC → API", "MVC uses the JWT in its authentication ticket to fetch the user’s current permissions before the dashboard action runs.", mvcPermissionFilter, "MVC", liveGrants + " · bearer JWT", "Authenticated JWT for the lookup. The dashboard requires " + dashboardRead + ".", "The API validates the token before looking up grants."];
+      const signinScenarios = {
+        success: {
+          connectors: ["Credentials", "Account lookup", "Signed JWT", "Next browser request", "Live permission check", "Authorized dashboard request"],
+          steps: [
+            ["Submit credentials", "Browser → MVC", "The browser submits the username and password with an antiforgery token.", accountController, "Browser", "POST /Account/Login", "Public sign-in. Antiforgery token required.", "MVC receives the sign-in form."],
+            ["Forward credentials", "MVC → API", "MVC forwards the credentials using AuthApiClient. Invalid credentials redisplay the sign-in form with an error.", "../DevTrack.WebApp/Auth/AuthApiClient.cs", "MVC", "POST /api/auth/login · JSON", "Public sign-in. Valid credentials required.", "The API delegates account validation to the Access module."],
+            ["Validate the account", "Access module → EF Core", "The Access module checks the active account and password hash, then loads the user’s current role grants.", rbacService, "Domain", "LoginAsync() and GetPermissionsAsync()", "Active account and valid credentials.", "The API returns HTTP 200 with the account details, grants, and a signed JWT."],
+            ["Issue the browser session", "MVC cookie sign-in", "MVC stores the API token in the authentication ticket and issues the browser session cookie.", accountController, "MVC", "Cookie SignInAsync()", "Successful API login.", "MVC redirects to the requested local page or to the dashboard."],
+            signedInRequest,
+            ["Read live dashboard access", "API → Access module", "The API reads permissions for the token subject from current role grants. The example user still has dashboard access.", authController, "API", liveGrants + " · bearer JWT", "Authenticated JWT for the lookup. The dashboard requires " + dashboardRead + ".", "HTTP 200 with a permission list containing " + dashboardRead + "."],
+            ["Load and render the dashboard", "API rechecks access before serving data", "The dashboard endpoint checks the required permission again. MVC renders the returned data as HTML.", "../DevTrack.Api/Controllers/DashboardController.cs", "API", "GET /api/dashboard · bearer JWT", dashboardRead, "API returns HTTP 200 with dashboard data. MVC renders the dashboard."]
+          ]
+        },
+        expired: {
+          connectors: ["Cookie accepted", "Token validation", "HTTP 401"],
+          steps: [
+            signedInRequest,
+            requestGrants,
+            ["Reject the expired JWT", "API authentication", "This example starts with an MVC cookie that is still accepted while its API JWT has expired. The API challenge happens before the Access module loads any grants.", "../DevTrack.Api/Auth/ConfigureJwtBearerOptions.cs", "API", liveGrants + " · expired bearer JWT", "Valid, unexpired JWT.", "HTTP 401 Unauthorized. No permission list is returned."],
+            ["Clear the session and challenge", "MVC redirects to sign-in", "MVC signs out the stale cookie and challenges the browser. If the MVC cookie itself has expired, MVC challenges immediately without an API permission request.", mvcPermissionFilter, "MVC", "Cookie SignOutAsync() and ChallengeResult", "A valid session is required for " + dashboardRead + ".", "HTTP 302 to /Account/Login with a return URL. No dashboard data is requested."]
+          ]
+        },
+        revoked: {
+          connectors: ["Cookie accepted", "Valid JWT", "Current role grants", "Required grant missing"],
+          steps: [
+            signedInRequest,
+            requestGrants,
+            ["Accept the JWT", "API authentication", "The JWT still identifies the user. The permissions endpoint uses its subject to look up grants for that account.", authController, "API", liveGrants + " · valid bearer JWT", "Authenticated JWT for the lookup.", "The API delegates the lookup to the Access module."],
+            ["Read grants after revocation", "Access module → EF Core", "The current role grants omit dashboard.read. The API returns the current permission list rather than relying on the permission claims from sign-in.", rbacService, "Domain", "GetPermissionsAsync(userId)", "Active account. The dashboard requires " + dashboardRead + ".", "HTTP 200 with current grants that omit " + dashboardRead + "."],
+            ["Deny dashboard access", "MVC redirects to Access Denied", "MVC returns Forbid when a required permission is missing. The session stays signed in, so pages with granted permissions remain available.", mvcPermissionFilter, "MVC", "ForbidResult for GET /", dashboardRead, "HTTP 302 to /Account/Denied. No dashboard data is requested."]
+          ]
+        }
+      };
       const write = "training.write";
       const attendanceForm = "../DevTrack.WebApp/Controllers/AttendanceController.cs";
       const trainingApi = "../DevTrack.Api/Controllers/TrainingController.cs";
@@ -145,6 +192,7 @@
       };
       let flowName = "attendance";
       let outcome = "valid";
+      let sessionScenario = "success";
       let currentStep = 0;
       let steps = [];
 
@@ -172,10 +220,12 @@
       function renderFlow(name, selectedStep = 0) {
         flowName = name;
         const attendance = name === "attendance";
+        const signin = name === "signin";
+        const session = signinScenarios[sessionScenario];
         const flow = attendance ? {
           stages: [...initialAttendanceSteps, ...outcomes[outcome]].map(step => [step]),
           connectors: ["Form submission", "Bearer JWT + JSON", "Training service", outcome === "valid" ? "Validation passed" : "Validation failed", "Result returned to MVC"]
-        } : flows.architecture;
+        } : signin ? { stages: session.steps.map(step => [step]), connectors: session.connectors } : flows.architecture;
         steps = flow.stages.flat();
         const $diagram = $("#diagram").empty();
         let index = 0;
@@ -196,6 +246,7 @@
         });
         $("#controls").prop("hidden", false);
         $("#attendance-outcome").prop("hidden", !attendance);
+        $("#signin-outcome").prop("hidden", !signin);
         selectStep(Math.min(selectedStep, steps.length - 1));
       }
 
@@ -209,6 +260,12 @@
         $("[data-outcome]").attr("aria-pressed", "false");
         $(this).attr("aria-pressed", "true");
         renderFlow(flowName, currentStep);
+      });
+      $("[data-session]").on("click", function () {
+        sessionScenario = this.dataset.session;
+        $("[data-session]").attr("aria-pressed", "false");
+        $(this).attr("aria-pressed", "true");
+        renderFlow("signin");
       });
       $("#diagram").on("click", "[data-step]", function () {
         selectStep(Number(this.dataset.step));
