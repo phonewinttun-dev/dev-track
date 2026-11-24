@@ -1,6 +1,5 @@
 using DevTrack.Features.Access.Auth;
 using DevTrack.Domain;
-using DevTrack.Domain.Access;
 using DevTrack.Database.Entities;
 using DevTrack.Shared.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -20,7 +19,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.ConfigureOptions<DevTrack.Api.Auth.ConfigureJwtBearerOptions>();
 
 builder.Services.AddAuthorization();
-builder.Services.AddAccessModule();
 
 builder.Services.AddScoped<DevTrack.Api.Auth.JwtTokenService>();
 builder.Services.AddControllers();
@@ -42,7 +40,7 @@ builder.Services.AddDbContext<DevTrackDbContext>(options =>
 });
 
 // Feature Services
-builder.Services.AddTrainingManagementModule();
+builder.Services.AddFeatures();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())

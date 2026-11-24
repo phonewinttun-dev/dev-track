@@ -1,4 +1,4 @@
-using DevTrack.Api.Auth;
+using DevTrack.Api.Auth.Authorize.Tasks;
 using DevTrack.Shared.Security;
 using DevTrack.Features.TrainingManagement.Developers;
 using DevTrack.Shared;

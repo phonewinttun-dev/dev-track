@@ -6,6 +6,8 @@ using System.Net;
 using System.Text.RegularExpressions;
 using DevTrack.WebApp;
 using DevTrack.WebApp.Services;
+using DevTrack.Features.TrainingManagement.Dashboard;
+using DevTrack.Shared;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -13,6 +15,67 @@ namespace DevTrack.Domain.Tests;
 
 public class WebAppAuthenticationTests
 {
+    [Fact]
+    public async Task Dashboard_ShowsFailureReasonAndEncodesItsContent()
+    {
+        #region Open the dashboard with a failed data result
+
+        await using var api = ApiAuthenticationTests.CreateFactory();
+        await using var factory = CreateFactory(api).WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services => services.AddScoped<IDashboardService, FailingDashboardService>()));
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await LoginAsync(client);
+
+        var response = await client.GetAsync("/");
+        var html = await response.Content.ReadAsStringAsync();
+
+        #endregion
+
+        #region Verify the rendered failure outcome
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Unable to load dashboard totals.", html);
+        Assert.Contains("&lt;script&gt;", html);
+        Assert.DoesNotContain("<script>alert", html);
+
+        #endregion
+    }
+
+    [Fact]
+    public async Task CreateBatch_ShowsSavedIdAfterRedirect()
+    {
+        #region Submit a batch through the authenticated form
+
+        await using var api = ApiAuthenticationTests.CreateFactory();
+        await using var factory = CreateFactory(api);
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await LoginAsync(client);
+        var form = await client.GetStringAsync("/Batches/Create");
+        var token = ExtractRequestVerificationToken(form);
+
+        var response = await client.PostAsync("/Batches/Create", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["BatchName"] = "Workflow feedback batch",
+            ["StartDate"] = "2026-05-01",
+            ["EndDate"] = "2026-05-01",
+            ["SelectedDays"] = "Friday",
+            ["__RequestVerificationToken"] = token
+        }));
+
+        #endregion
+
+        #region Verify the redirect renders persisted feedback
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var page = await client.GetAsync(response.Headers.Location);
+        var html = await page.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains("Batch created successfully. Batch ID:", html);
+        Assert.Contains("Workflow feedback batch", html);
+
+        #endregion
+    }
+
     [Fact]
     public async Task Home_RedirectsToLogin_WhenUnauthenticated()
     {
@@ -158,5 +221,23 @@ public class WebAppAuthenticationTests
         var match = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"", RegexOptions.IgnoreCase);
         Assert.True(match.Success, "The antiforgery token was not found in the rendered form.");
         return WebUtility.HtmlDecode(match.Groups[1].Value);
+    }
+
+    private sealed class FailingDashboardService : IDashboardService
+    {
+        #region Provide a failure to the rendered page
+
+        public async Task<Result<DashboardResponse>> GetDashboardDataAsync()
+        {
+            return await Task.FromResult(Result<DashboardResponse>.Failure(
+                "Unable to load dashboard totals. <script>alert('unsafe')</script>"));
+        }
+
+        public Task<Result<List<BatchSummaryModel>>> GetDashboardReportAsync()
+        {
+            throw new InvalidOperationException("Opening the dashboard must not generate a report.");
+        }
+
+        #endregion
     }
 }

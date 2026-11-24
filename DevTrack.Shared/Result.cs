@@ -8,6 +8,9 @@ public class Result
     public string Message { get; init; }
     public bool IsFailure => !IsSuccess;
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ErrorCode { get; init; }
+
     [JsonConstructor]
     public Result(bool isSuccess, string message)
     {
@@ -16,7 +19,12 @@ public class Result
     }
 
     public static Result Success(string message = "Success") => new(true, message);
-    public static Result Failure(string message) => new(false, message);
+    public static Result Failure(string message) => Failure(message, null);
+
+    public static Result Failure(string message, string? errorCode) => new(false, message)
+    {
+        ErrorCode = errorCode
+    };
 }
 
 public class Result<T> : Result
@@ -30,5 +38,10 @@ public class Result<T> : Result
     }
 
     public static Result<T> Success(T data, string message = "Success") => new(true, message, data);
-    public new static Result<T> Failure(string message) => new(false, message, default);
+    public new static Result<T> Failure(string message) => Failure(message, null);
+
+    public new static Result<T> Failure(string message, string? errorCode) => new(false, message, default)
+    {
+        ErrorCode = errorCode
+    };
 }

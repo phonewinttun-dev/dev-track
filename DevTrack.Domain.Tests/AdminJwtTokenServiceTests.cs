@@ -4,6 +4,7 @@ using System.Text;
 using DevTrack.Shared.Security;
 using DevTrack.Api.Auth;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 
 namespace DevTrack.Domain.Tests;
@@ -19,9 +20,13 @@ public class AdminJwtTokenServiceTests
             Audience = AuthTestSettings.Audience,
             SigningKey = AuthTestSettings.SigningKey,
             ExpiresMinutes = 480
-        }));
+        }), NullLogger<JwtTokenService>.Instance);
 
-        var token = service.CreateAdminToken(AuthTestSettings.Username, AuthTestSettings.DisplayName);
+        var tokenResult = service.CreateAdminToken(AuthTestSettings.Username, AuthTestSettings.DisplayName);
+
+        Assert.True(tokenResult.IsSuccess);
+        Assert.NotNull(tokenResult.Data);
+        var token = tokenResult.Data;
 
         var principal = new JwtSecurityTokenHandler().ValidateToken(token, new TokenValidationParameters
         {

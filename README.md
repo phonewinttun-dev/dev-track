@@ -4,11 +4,10 @@ DevTrack is a comprehensive management system designed to track training batches
 
 ## Project Structure
 
-DevTrack has one backend with two domain modules and a separate ASP.NET Core MVC frontend.
+DevTrack has one backend, a single Domain project containing the Training Management and Access modules, and a separate ASP.NET Core MVC frontend.
 
-- **DevTrack.Api** is the backend composition root. It registers the modules explicitly, exposes thin controllers, and owns database configuration and startup seeding.
-- **DevTrack.Domain** is the Training Management module. Its feature folders are `Dashboard`, `Batches`, `Developers`, and `Training`. The Attendance menu maps to `Training`, which also owns the schedule and reports.
-- **DevTrack.Domain.Access** owns the `Auth` feature, including credentials, roles, permissions, and bootstrap.
+- **DevTrack.Api** is the backend composition root. It registers domain features through `AddFeatures()`, exposes thin controllers, and owns database configuration and startup seeding.
+- **DevTrack.Domain** owns the `Dashboard`, `Batches`, `Developers`, `Training`, and `Auth` features. The Attendance menu maps to `Training`, which also owns the schedule and reports. `Auth` owns credentials, roles, permissions, and bootstrap. `FeatureManager.cs` registers all domain feature services with scoped lifetimes.
 - **DevTrack.Models** holds typed requests, responses, and feature service contracts. Its `Features/<Module>/<Feature>` folders mirror the domain features and share their namespaces.
 - **DevTrack.Database** owns the EF Core context and persistence mappings used by the domain modules.
 - **DevTrack.Shared** holds the result types, pagination, and shared constants.
@@ -16,7 +15,7 @@ DevTrack has one backend with two domain modules and a separate ASP.NET Core MVC
 
 ### Adding a feature
 
-Place business logic in the owning module's `Features/<Feature>` folder and shared DTOs in its matching Models folder. Register the service in that module's DI extension and expose it through a thin API controller. Keep secondary actions such as schedule and export in the menu's feature. If one domain module needs another, put the interface and DTO in Models and register its implementation in the API.
+Place business logic in the owning module's `Features/<Feature>` folder and shared DTOs in its matching Models folder. Register the service in `FeatureManager.AddFeatures()` and expose it through a thin API controller. Keep secondary actions such as schedule and export in the menu's feature. If one domain module needs another, put the interface and DTO in Models and register its implementation through the feature manager.
 
 ## Features
 

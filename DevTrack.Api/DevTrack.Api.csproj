@@ -16,7 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DevTrack.Domain\DevTrack.Domain.csproj" />
-    <ProjectReference Include="..\DevTrack.Domain.Access\DevTrack.Domain.Access.csproj" />
   </ItemGroup>
 
 </Project>

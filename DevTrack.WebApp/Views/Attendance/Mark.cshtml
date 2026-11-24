@@ -50,6 +50,8 @@
         </div>
     }
 
+    <div asp-validation-summary="All" class="text-red-700" role="alert"></div>
+
     <form asp-action="Mark" method="post" class="space-y-8">
         @if (Model != null)
         {

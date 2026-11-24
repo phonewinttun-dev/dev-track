@@ -1,11 +1,11 @@
+using DevTrack.WebApp.Services;
+using DevTrack.Shared;
 using DevTrack.WebApp.Auth;
 using DevTrack.Shared.Security;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using DevTrack.Features.TrainingManagement.Dashboard;
-using DevTrack.Shared;
 using DevTrack.WebApp.Models;
-using DevTrack.WebApp.Services;
 using Microsoft.AspNetCore.Authorization;
 
 namespace DevTrack.WebApp.Controllers;
@@ -16,48 +16,103 @@ public class HomeController : Controller
 
     public HomeController(IDashboardService dashboardService)
     {
+        #region Home Controller
+
         _dashboardService = dashboardService;
+
+        #endregion
     }
 
     [Permission(Permissions.DashboardRead)]
     public async Task<IActionResult> Index()
     {
+        #region Index
+
         var result = await _dashboardService.GetDashboardDataAsync();
+
+
+        if (result.IsFailure)
+        {
+            var failureView = View("WorkflowFailure", result.Message);
+            failureView.StatusCode = 400;
+
+            return failureView;
+        }
+
         return View(result.Data);
+
+        #endregion
     }
 
     [Permission(Permissions.DashboardRead)]
     public async Task<IActionResult> Download()
     {
+        #region Download
+
         var result = await _dashboardService.GetDashboardReportAsync();
-        if (!result.IsSuccess || result.Data == null)
+
+
+        if (result.IsFailure)
         {
-            return BadRequest("Could not generate report.");
+            var failureView = View("WorkflowFailure", result.Message);
+            failureView.StatusCode = 400;
+
+            return failureView;
         }
 
-        var builder = new System.Text.StringBuilder();
-        builder.AppendLine("Batch Name,Mentor,Developers");
+        var fileResult = CreateReport(result.Data!);
 
-        foreach (var item in result.Data)
+        if (fileResult.IsFailure)
         {
-            builder.AppendLine(FormattableString.Invariant(
-                $"{Csv.Escape(item.BatchName)},{Csv.Escape(item.MentorName)},{item.DeveloperCount}"));
+            var failureView = View("WorkflowFailure", fileResult.Message);
+            failureView.StatusCode = 400;
+
+            return failureView;
         }
 
         var fileName = $"Dashboard_Report_{DateTime.Now:yyyyMMdd}.csv";
-        return File(System.Text.Encoding.UTF8.GetBytes(builder.ToString()), "text/csv", fileName);
+
+        return File(fileResult.Data!, "text/csv", fileName);
+
+        #endregion
     }
 
     [Permission(Permissions.DashboardRead)]
     public IActionResult Privacy()
     {
+        #region Privacy
+
         return View();
+
+        #endregion
     }
 
     [AllowAnonymous]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
+        #region Error
+
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+
+        #endregion
+    }
+
+    private static Result<byte[]> CreateReport(List<BatchSummaryModel> rows)
+    {
+        #region Create Report
+
+        var builder = new System.Text.StringBuilder();
+        builder.AppendLine("Batch Name,Mentor,Developers");
+
+        foreach (var item in rows)
+        {
+            builder.AppendLine(FormattableString.Invariant(
+                $"{Csv.Escape(item.BatchName)},{Csv.Escape(item.MentorName)},{item.DeveloperCount}"));
+        }
+
+        return Result<byte[]>.Success(System.Text.Encoding.UTF8.GetBytes(builder.ToString()), "Report generated.");
+
+        #endregion
     }
 }

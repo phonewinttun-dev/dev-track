@@ -166,6 +166,13 @@
     </header>
 
     <main role="main" class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        @if (TempData["WorkflowSuccess"] is string successMessage)
+        {
+            <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900" role="status">
+                @successMessage
+            </div>
+        }
+
         @RenderBody()
     </main>
 
