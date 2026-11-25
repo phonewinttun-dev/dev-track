@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
 using DevTrack.Shared.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -21,7 +22,7 @@ public partial class PermissionFilter(
                 return;
             }
 
-            if (CheckAuthentication(context.HttpContext.User).IsFailure)
+            if (context.HttpContext.User.Identity?.IsAuthenticated != true)
             {
                 context.Result = new ChallengeResult();
                 return;
@@ -37,7 +38,7 @@ public partial class PermissionFilter(
             {
                 if (result.ErrorCode == AuthErrorCodes.Unauthorized)
                 {
-                    await SignOutSessionAsync(context.HttpContext);
+                    await context.HttpContext.SignOutAsync();
                     context.Result = new ChallengeResult();
                     logger.LogInformation("OnAuthorizationAsync => Expired session signed out.");
                 }

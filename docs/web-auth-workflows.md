@@ -28,3 +28,7 @@ profile values, permission lists, JWTs, and response bodies.
 
 Profile and grant changes appear on the next page request without issuing another
 token. Logout still revokes the API session before clearing the cookie.
+
+The authentication guard and framework sign-out call stay directly in the
+permission workflow; they do not need Result wrappers or forwarding-only task
+files.

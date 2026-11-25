@@ -309,6 +309,40 @@ public class WebAuthWorkflowTests
         #endregion
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task OnAuthorizationAsync_ChecksAllRequirementsWithOneCurrentUserLookup(bool hasEveryPermission)
+    {
+        var profile = new MeResponse(1, "test-user", "Test User", "Reader", ["training.read", "batches.read"]);
+        var transport = new Transport((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new TrackingContent(JsonSerializer.Serialize(profile))
+        }));
+        var authentication = new AuthenticationStub(null);
+        using var services = CreateServices(authentication);
+        var factory = new ClientFactory(transport);
+        var api = new AuthApiClient(factory, NullLogger<AuthApiClient>.Instance);
+        var currentUser = new CurrentUser();
+        var filter = new PermissionFilter(api, currentUser, NullLogger<PermissionFilter>.Instance);
+        var context = CreateAuthorizationContext(services, true, null);
+        context.ActionDescriptor.EndpointMetadata =
+        [
+            new PermissionAttribute("TRAINING.READ"),
+            new PermissionAttribute(hasEveryPermission ? "batches.read" : "batches.write")
+        ];
+
+        await filter.OnAuthorizationAsync(context);
+
+        Assert.Equal(1, transport.Calls);
+        Assert.Equal("/me", transport.Path);
+        Assert.NotNull(currentUser.Details);
+        Assert.Equal(profile.Username, currentUser.Details.Username);
+        Assert.True(currentUser.HasPermission("training.READ"));
+        Assert.Equal(hasEveryPermission ? null : typeof(ForbidResult), context.Result?.GetType());
+        Assert.All(factory.Clients, client => Assert.True(client.IsDisposed));
+    }
+
     [Fact]
     public async Task OnAuthorizationAsync_SkipsCurrentUserLookupForAnonymousEndpoints()
     {
