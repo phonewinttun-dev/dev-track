@@ -1,6 +1,6 @@
 # DevTrack Feature Gap Review
 
-**Source of truth:** [User stories](../requirements/user-stories.md)  
+**Source of truth:** [User stories](../requirements/user-stories.md)
 **Scope:** `DevTrack.WebApp` (MVC + IHttpClientFactory), `DevTrack.Api` (HTTP API), `DevTrack.Domain` (services), `DevTrack.Database` (EF entities)  
 **Date:** 2026-05-06
 
