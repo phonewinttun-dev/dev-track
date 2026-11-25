@@ -154,3 +154,12 @@ Before considering a code change complete:
 
 - Keep database initialization and seed orchestration in the Domain project. The Database project owns entities and persistence mappings.
 - Use asynchronous Entity Framework operations in initializers and await initialization at startup.
+
+### Authentication sessions and workflow conventions
+
+- Follow [rules.md](rules.md) for JWT session token requirements.
+- Apply the global code formatting rules and existing workflow/task pattern to every change.
+- Keep workflows responsible for orchestration, task Result checks, safe logging, and stop/continue decisions; keep task implementations in the operation's `Tasks/` folder.
+- Sign JWTs containing only a random `sid` claim, persist only token hashes, and resolve identity, permissions, and session lifetime on the server.
+
+- Apply SRP, KISS, and YAGNI when extending workflows: private tasks may return ordinary values or `Task` when there is no expected failure to model. Avoid success-only Result wrappers, unreachable failure checks, and helpers that only forward a call.
