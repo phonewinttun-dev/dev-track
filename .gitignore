@@ -366,3 +366,12 @@ FodyWeavers.xsd
 /graphify-out/.graphify_*
 /graphify-out/cost.json
 /graphify-out/manifest.json
+
+# Local SQLite database and temporary files
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Local JWT signing key
+devtrack.key

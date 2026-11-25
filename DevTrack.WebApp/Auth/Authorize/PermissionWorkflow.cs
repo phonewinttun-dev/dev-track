@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using DevTrack.Shared.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -6,146 +7,69 @@ namespace DevTrack.WebApp.Auth;
 
 public partial class PermissionFilter(
     AuthApiClient authApi,
+    CurrentUser currentUser,
     ILogger<PermissionFilter> logger) : IAsyncAuthorizationFilter
 {
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         try
         {
-            #region Check the authenticated identity
+            #region Require an authenticated session
 
-            var identityResult = CheckAuthentication(context.HttpContext.User);
-
-            if (identityResult.IsFailure)
+            if (context.ActionDescriptor.EndpointMetadata.OfType<IAllowAnonymous>().Any())
             {
-                logger.LogInformation(
-                    "OnAuthorizationAsync => Authentication required. Reason={Reason}, NextAction=challenge",
-                    identityResult.Message);
+                return;
+            }
 
+            if (CheckAuthentication(context.HttpContext.User).IsFailure)
+            {
                 context.Result = new ChallengeResult();
-
                 return;
             }
 
-            logger.LogInformation(
-                "OnAuthorizationAsync => Identity authenticated. Reason={Reason}, NextAction=read permission metadata",
-                identityResult.Message);
-
             #endregion
 
-            #region Read endpoint requirements
+            #region Load current user details and permissions
 
-            var metadataResult = ReadRequiredPermissions(context);
+            var result = await authApi.GetMeAsync(context.HttpContext.RequestAborted);
 
-            if (metadataResult.IsFailure)
+            if (result.IsFailure)
             {
-                logger.LogError(
-                    "OnAuthorizationAsync => Metadata lookup failed. Reason={Reason}, NextAction=return server failure",
-                    metadataResult.Message);
-
-                context.Result = new StatusCodeResult(StatusCodes.Status500InternalServerError);
-
-                return;
-            }
-
-            var requiredPermissions = metadataResult.Data!;
-
-            logger.LogInformation(
-                "OnAuthorizationAsync => Metadata selected. Reason={Reason}, NextAction=fetch current API permissions",
-                metadataResult.Message);
-
-            #endregion
-
-            #region Fetch current permissions and end an expired session
-
-            var permissionsResult = await LoadUserPermissionsAsync(context.HttpContext.RequestAborted);
-
-            if (permissionsResult.IsFailure)
-            {
-                if (permissionsResult.ErrorCode != AuthErrorCodes.Unauthorized)
+                if (result.ErrorCode == AuthErrorCodes.Unauthorized)
                 {
-                    logger.LogError(
-                        "OnAuthorizationAsync => Permission lookup failed. Reason={Reason}, NextAction=return server failure",
-                        permissionsResult.Message);
-
+                    await SignOutSessionAsync(context.HttpContext);
+                    context.Result = new ChallengeResult();
+                    logger.LogInformation("OnAuthorizationAsync => Expired session signed out.");
+                }
+                else
+                {
                     context.Result = new StatusCodeResult(StatusCodes.Status500InternalServerError);
-
-                    return;
+                    logger.LogError("OnAuthorizationAsync => Permission check failed. Reason={Reason}", result.Message);
                 }
-
-                logger.LogInformation(
-                    "OnAuthorizationAsync => API session unauthorized. Reason={Reason}, NextAction=sign out then challenge",
-                    permissionsResult.Message);
-
-                var signOutResult = await SignOutSessionAsync(context.HttpContext);
-
-                if (signOutResult.IsFailure)
-                {
-                    logger.LogError(
-                        "OnAuthorizationAsync => Sign out failed. Reason={Reason}, NextAction=return server failure",
-                        signOutResult.Message);
-
-                    context.Result = new StatusCodeResult(StatusCodes.Status500InternalServerError);
-
-                return;
-                }
-
-                logger.LogInformation(
-                    "OnAuthorizationAsync => Session signed out. Reason={Reason}, NextAction=challenge",
-                    signOutResult.Message);
-
-                context.Result = new ChallengeResult();
 
                 return;
             }
-
-            var permissions = permissionsResult.Data!;
-
-            logger.LogInformation(
-                "OnAuthorizationAsync => Current permissions loaded. PermissionCount={PermissionCount}, Reason={Reason}, NextAction=check requirements",
-                permissions.Length,
-                permissionsResult.Message);
 
             #endregion
 
-            #region Check each requirement with existing case-insensitive matching
+            #region Apply the current permissions
 
-            var checkedCount = 0;
+            currentUser.Details = result.Data!;
+            var isAllowed = ReadRequiredPermissions(context).All(currentUser.HasPermission);
 
-            foreach (var permission in requiredPermissions)
+            if (!isAllowed)
             {
-                var requirementResult = CheckRequiredPermission(permission, permissions);
-
-                if (requirementResult.IsFailure)
-                {
-                    logger.LogInformation(
-                        "OnAuthorizationAsync => Permission denied. Permission={Permission}, Reason={Reason}, NextAction=forbid",
-                        permission,
-                        requirementResult.Message);
-
-                    context.Result = new ForbidResult();
-
-                    return;
-                }
-
-                checkedCount++;
-
-                logger.LogInformation(
-                    "OnAuthorizationAsync => Permission granted. Permission={Permission}, Reason={Reason}, NextAction=check remaining requirements",
-                    permission,
-                    requirementResult.Message);
+                context.Result = new ForbidResult();
             }
 
-            logger.LogInformation(
-                "OnAuthorizationAsync => Requirements satisfied. CheckedCount={CheckedCount}, NextAction=continue request",
-                checkedCount);
+            logger.LogInformation("OnAuthorizationAsync => Permission check completed. IsAllowed={IsAllowed}",
+                isAllowed);
 
             #endregion
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             logger.LogError(exception, "OnAuthorizationAsync => Permission evaluation failed.");
-
             throw;
         }
     }

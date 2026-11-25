@@ -28,7 +28,7 @@
         {
             var isUpcoming = item.TrainingDate > DateOnly.FromDateTime(DateTime.Now);
             var isToday = item.TrainingDate == DateOnly.FromDateTime(DateTime.Now);
-            
+
             <div class="premium-card group relative flex items-center justify-between p-5 @(isToday ? "ring-2 ring-primary bg-primary/5" : "")">
                 <div class="flex items-center gap-8">
                     <div class="flex flex-col items-center justify-center w-20 h-20 rounded-2xl @(isToday ? "bg-primary text-white shadow-lg shadow-primary/30" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100") transition-all">
@@ -44,7 +44,7 @@
                                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-primary text-white tracking-widest">TODAY</span>
                             }
                         </div>
-                        
+
                         <div class="flex items-center gap-3">
                             @{
                                 var badgeClass = item.DayType switch
@@ -85,17 +85,20 @@
                         {
                             <span class="text-[11px] font-black uppercase tracking-wider text-rose-500 bg-rose-50 px-3 py-2 rounded-xl border border-rose-100 shadow-sm">Pending</span>
                         }
-                        
-                        <a asp-action="Mark" asp-route-batchId="@item.BatchId" asp-route-date="@item.TrainingDate.ToString("yyyy-MM-dd")" 
-                           class="inline-flex items-center justify-center rounded-xl text-sm font-bold h-12 px-8 @(item.IsAttendanceMarked ? "border-2 border-slate-100 bg-white hover:border-primary/20 hover:text-primary" : "bg-slate-900 text-white shadow-xl hover:bg-slate-800") transition-all active:scale-95">
-                            @(item.IsAttendanceMarked ? "Edit" : "Mark")
-                        </a>
+
+                        @if (CurrentUser.HasPermission(Permissions.TrainingWrite))
+                        {
+                            <a asp-action="Mark" asp-route-batchId="@item.BatchId" asp-route-date="@item.TrainingDate.ToString("yyyy-MM-dd")"
+                               class="inline-flex items-center justify-center rounded-xl text-sm font-bold h-12 px-8 @(item.IsAttendanceMarked ? "border-2 border-slate-100 bg-white hover:border-primary/20 hover:text-primary" : "bg-slate-900 text-white shadow-xl hover:bg-slate-800") transition-all active:scale-95">
+                                @(item.IsAttendanceMarked ? "Edit" : "Mark")
+                            </a>
+                        }
                     }
                 </div>
             </div>
         }
     </div>
-    
+
     <div class="premium-card p-6 border-t border-slate-50 bg-slate-50/30 overflow-hidden">
         <partial name="_Pagination" model="Model.Pagination" />
     </div>

@@ -2,19 +2,26 @@ using System.Net;
 using System.Text.Json;
 using DevTrack.Shared;
 using DevTrack.Shared.Security;
-using DevTrack.WebApp.Services;
 
 namespace DevTrack.WebApp.Auth;
 
 public partial class AuthApiClient
 {
-    private Result<HttpClient> CreateAuthClient()
+    private static async Task<Result<TResponse>> ReadAuthResponseAsync<TResponse>(
+        HttpResponseMessage response,
+        string emptyPayloadMessage,
+        CancellationToken cancellationToken) where TResponse : class
     {
-        #region Acquire the existing named client
+        #region Validate status before reading the payload
 
-        var client = clientFactory.CreateClient(ApiClientBase.ClientName);
+        var statusResult = CheckApiResponse(response);
 
-        return Result<HttpClient>.Success(client, "Authentication client acquired.");
+        if (statusResult.IsFailure)
+        {
+            return Result<TResponse>.Failure(statusResult.Message, statusResult.ErrorCode);
+        }
+
+        return await ReadApiPayloadAsync<TResponse>(response, emptyPayloadMessage, cancellationToken);
 
         #endregion
     }

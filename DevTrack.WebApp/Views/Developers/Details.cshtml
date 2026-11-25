@@ -81,9 +81,12 @@
                             <p class="font-medium">@(currentBatch.MinAttendancePercent ?? 80)%</p>
                         </div>
                     </div>
-                    <a asp-controller="Attendance" asp-action="Schedule" asp-route-batchId="@currentBatch.BatchId" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 transition-colors">
-                        View Schedule
-                    </a>
+                    @if (CurrentUser.HasPermission(Permissions.TrainingRead))
+                    {
+                        <a asp-controller="Attendance" asp-action="Schedule" asp-route-batchId="@currentBatch.BatchId" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 transition-colors">
+                            View Schedule
+                        </a>
+                    }
                 </div>
             }
             else

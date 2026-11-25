@@ -47,8 +47,8 @@ public class WebAuthWorkflowTests
             Content = content
         };
         var transport = new Transport((_, _) => Task.FromResult(response));
-        var logger = new WorkflowLogger<AdminJwtAuthorizationHandler>();
-        var handler = new AdminJwtAuthorizationHandler(
+        var logger = new WorkflowLogger<TokenSendHandler>();
+        var handler = new TokenSendHandler(
             new HttpContextAccessor
             {
                 HttpContext = hasContext ? context : null
@@ -87,8 +87,8 @@ public class WebAuthWorkflowTests
         #region Read an isolated successful response
 
         var payload = isLogin
-            ? JsonSerializer.Serialize(new LoginResponse("private-token", 1, "Private Name", "Admin", ["training.read"]))
-            : "[\"training.read\"]";
+            ? JsonSerializer.Serialize(new LoginResponse("private-token"))
+            : JsonSerializer.Serialize(new MeResponse(1, "private-user", "Private Name", "Reader", ["training.read"]));
         var content = new TrackingContent(payload);
         var transport = new Transport((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -112,10 +112,10 @@ public class WebAuthWorkflowTests
         }
         else
         {
-            Assert.Equal(new[] { "training.read" }, Assert.IsType<Result<string[]>>(result).Data);
+            Assert.Equal("private-user", Assert.IsType<Result<MeResponse>>(result).Data!.Username);
         }
 
-        Assert.Equal(isLogin ? "/api/auth/login" : "/api/auth/permissions", transport.Path);
+        Assert.Equal(isLogin ? "/api/auth/login" : "/me", transport.Path);
         Assert.Equal(isLogin ? HttpMethod.Post : HttpMethod.Get, transport.Method);
         Assert.Equal(ApiClientBase.ClientName, factory.RequestedName);
         Assert.True(content.IsDisposed);
@@ -162,6 +162,8 @@ public class WebAuthWorkflowTests
     [InlineData(false, 403, "{}", AuthErrorCodes.ApiFailure)]
     [InlineData(true, 200, "invalid-json", AuthErrorCodes.InvalidResponse)]
     [InlineData(false, 200, "invalid-json", AuthErrorCodes.InvalidResponse)]
+    [InlineData(false, 200, "{}", AuthErrorCodes.InvalidResponse)]
+    [InlineData(false, 200, "{\"userId\":1,\"username\":\"test\",\"displayName\":\"Test\",\"role\":\"Reader\",\"permissions\":null}", AuthErrorCodes.InvalidResponse)]
     public async Task ApiCall_ReturnsFailureAndDisposesOwnedResources(
         bool isLogin,
         int status,
@@ -220,7 +222,7 @@ public class WebAuthWorkflowTests
         Assert.Equal(AuthErrorCodes.InvalidResponse, result.ErrorCode);
         Assert.Equal(isLogin
             ? "The API returned an empty login response."
-            : "The API returned an empty permissions response.", result.Message);
+            : "The API returned an empty current user response.", result.Message);
         Assert.Null(logger.Exception);
         Assert.True(content.IsDisposed);
         Assert.All(factory.Clients, client => Assert.True(client.IsDisposed));
@@ -259,11 +261,11 @@ public class WebAuthWorkflowTests
     }
 
     [Theory]
-    [InlineData(false, 200, "[]", "training.read", typeof(ChallengeResult), 0)]
+    [InlineData(false, 200, "{\"userId\":1,\"username\":\"test-user\",\"displayName\":\"Test User\",\"role\":\"Reader\",\"permissions\":[\"TRAINING.READ\"]}", "training.read", typeof(ChallengeResult), 0)]
     [InlineData(true, 401, "invalid-json", "training.read", typeof(ChallengeResult), 1)]
-    [InlineData(true, 200, "[]", "training.read", typeof(ForbidResult), 0)]
-    [InlineData(true, 200, "[\"TRAINING.READ\"]", "training.read", null, 0)]
-    [InlineData(true, 200, "[]", null, null, 0)]
+    [InlineData(true, 200, "{\"userId\":1,\"username\":\"test-user\",\"displayName\":\"Test User\",\"role\":\"Reader\",\"permissions\":[]}", "training.read", typeof(ForbidResult), 0)]
+    [InlineData(true, 200, "{\"userId\":1,\"username\":\"test-user\",\"displayName\":\"Test User\",\"role\":\"Reader\",\"permissions\":[\"TRAINING.READ\"]}", "training.read", null, 0)]
+    [InlineData(true, 200, "{\"userId\":1,\"username\":\"test-user\",\"displayName\":\"Test User\",\"role\":\"Reader\",\"permissions\":[\"TRAINING.READ\"]}", null, null, 0)]
     [InlineData(true, 200, "null", "training.read", typeof(StatusCodeResult), 0)]
     [InlineData(true, 200, "invalid-json", "training.read", typeof(StatusCodeResult), 0)]
     public async Task OnAuthorizationAsync_PreservesSessionAndPermissionDecisions(
@@ -284,7 +286,7 @@ public class WebAuthWorkflowTests
         }));
         var factory = new ClientFactory(transport);
         var api = new AuthApiClient(factory, NullLogger<AuthApiClient>.Instance);
-        var filter = new PermissionFilter(api, NullLogger<PermissionFilter>.Instance);
+        var filter = new PermissionFilter(api, new CurrentUser(), NullLogger<PermissionFilter>.Instance);
         var context = CreateAuthorizationContext(services, isAuthenticated, requiredPermission);
 
         await filter.OnAuthorizationAsync(context);
@@ -308,6 +310,25 @@ public class WebAuthWorkflowTests
     }
 
     [Fact]
+    public async Task OnAuthorizationAsync_SkipsCurrentUserLookupForAnonymousEndpoints()
+    {
+        var authentication = new AuthenticationStub(null);
+        using var services = CreateServices(authentication);
+        var transport = new Transport((_, _) => throw new InvalidOperationException("Anonymous pages must not call the API."));
+        var api = new AuthApiClient(new ClientFactory(transport), NullLogger<AuthApiClient>.Instance);
+        var user = new CurrentUser();
+        var filter = new PermissionFilter(api, user, NullLogger<PermissionFilter>.Instance);
+        var context = CreateAuthorizationContext(services, false, null);
+        context.ActionDescriptor.EndpointMetadata = [new Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute()];
+
+        await filter.OnAuthorizationAsync(context);
+
+        Assert.Null(context.Result);
+        Assert.Null(user.Details);
+        Assert.Equal(0, transport.Calls);
+    }
+
+    [Fact]
     public async Task OnAuthorizationAsync_MapsApiFailureToServerFailureWithoutDenialOrSignOut()
     {
         #region Fail a required permission API request
@@ -318,7 +339,7 @@ public class WebAuthWorkflowTests
             new HttpResponseMessage(HttpStatusCode.InternalServerError))));
         var api = new AuthApiClient(factory, NullLogger<AuthApiClient>.Instance);
         var logger = new WorkflowLogger<PermissionFilter>();
-        var filter = new PermissionFilter(api, logger);
+        var filter = new PermissionFilter(api, new CurrentUser(), logger);
         var context = CreateAuthorizationContext(services, true, "training.read");
 
         await filter.OnAuthorizationAsync(context);
@@ -346,7 +367,7 @@ public class WebAuthWorkflowTests
         var factory = new ClientFactory(new Transport((_, _) => Task.FromException<HttpResponseMessage>(failure)));
         var api = new AuthApiClient(factory, NullLogger<AuthApiClient>.Instance);
         var logger = new WorkflowLogger<PermissionFilter>();
-        var filter = new PermissionFilter(api, logger);
+        var filter = new PermissionFilter(api, new CurrentUser(), logger);
         var context = CreateAuthorizationContext(services, true, "training.read");
 
         var thrown = await Assert.ThrowsAsync<HttpRequestException>(() => filter.OnAuthorizationAsync(context));
@@ -411,7 +432,7 @@ public class WebAuthWorkflowTests
             return await api.LoginAsync(new LoginRequest("private-user", "private-password"), token);
         }
 
-        return await api.GetPermissionsAsync(token);
+        return await api.GetMeAsync(token);
 
         #endregion
     }

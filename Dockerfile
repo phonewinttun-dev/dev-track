@@ -44,7 +44,7 @@ RUN chmod +x /app/run.sh
 
 # Default env vars for the combined service
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV DatabaseProvider=SqlServer
+ENV DatabaseProvider=SQLite
 ENV ApiSettings__BaseUrl=http://localhost:5000
 
 EXPOSE 8080

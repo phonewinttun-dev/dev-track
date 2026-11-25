@@ -1,18 +1,15 @@
 using System.Security.Claims;
-using DevTrack.Api.Auth;
 using DevTrack.Features.Access.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using DevTrack.Shared;
-using DevTrack.Database.Entities;
 
 namespace DevTrack.Api.Controllers;
 
 [ApiController, Route("api/auth")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class AuthController(
-    RbacService service,
-    JwtTokenService tokens,
+    UserAccessService service,
+    SessionService tokens,
     ILogger<AuthController> logger) : ControllerBase
 {
     [AllowAnonymous, HttpPost("login")]
@@ -27,53 +24,33 @@ public class AuthController(
 
             #region Authenticate the credentials
 
-            var userResult = await AuthenticateAsync(request);
+            var user = await service.LoginAsync(request.Username, request.Password);
 
-            if (userResult.IsFailure)
+            if (user is null)
             {
-                logger.LogInformation("LoginAsync => Authentication stopped. Reason={Reason}", userResult.Message);
+                logger.LogInformation("LoginAsync => Credentials rejected.");
 
                 return Unauthorized();
             }
-
-            var user = userResult.Data!;
 
             logger.LogInformation("LoginAsync => Authentication succeeded. UserId={UserId}", user.Id);
 
             #endregion
 
-            #region Load the user's permissions
-
-            var permissionsResult = await LoadPermissionsAsync(user.Id);
-
-            if (permissionsResult.IsFailure)
-            {
-                logger.LogWarning("LoginAsync => Permission lookup stopped. Reason={Reason}", permissionsResult.Message);
-
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
-
-            var permissions = permissionsResult.Data!;
-
-            logger.LogInformation("LoginAsync => Permissions loaded. UserId={UserId}, PermissionCount={PermissionCount}",
-                user.Id, permissions.Length);
-
-            #endregion
-
             #region Issue the access token
 
-            var responseResult = IssueLoginResponse(user, permissions);
+            var tokenResult = await tokens.CreateAsync(user.Id, HttpContext.RequestAborted);
 
-            if (responseResult.IsFailure)
+            if (tokenResult.IsFailure)
             {
-                logger.LogWarning("LoginAsync => Token creation stopped. Reason={Reason}", responseResult.Message);
+                logger.LogWarning("LoginAsync => Token creation stopped. Reason={Reason}", tokenResult.Message);
 
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
             logger.LogInformation("LoginAsync => Access token issued. UserId={UserId}", user.Id);
 
-            return Ok(responseResult.Data);
+            return Ok(new LoginResponse(tokenResult.Data!));
 
             #endregion
         }
@@ -84,70 +61,55 @@ public class AuthController(
         }
     }
 
-    private async Task<Result<AppUser>> AuthenticateAsync(LoginRequest request)
+    [HttpPost("logout")]
+    public async Task<IActionResult> LogoutAsync(CancellationToken cancellationToken)
     {
-        #region Authenticate
+        #region Revoke the authenticated session
 
-        var user = await service.LoginAsync(request.Username, request.Password);
-
-        if (user is null)
-        {
-            return Result<AppUser>.Failure("Invalid username or password.");
-        }
-
-        return Result<AppUser>.Success(user);
+        var header = System.Net.Http.Headers.AuthenticationHeaderValue.Parse(Request.Headers.Authorization.ToString());
+        var result = await tokens.RevokeAsync(header.Parameter!, cancellationToken);
+        return result.IsSuccess ? NoContent() : StatusCode(StatusCodes.Status500InternalServerError);
 
         #endregion
     }
 
-    private async Task<Result<string[]>> LoadPermissionsAsync(int userId)
+    [HttpPost("permission-check")]
+    public async Task<ActionResult<PermissionCheckResponse>> CheckPermissionsAsync(
+        PermissionCheckRequest request, CancellationToken cancellationToken)
     {
-        #region Load Permissions
-
-        var permissions = await service.GetPermissionsAsync(userId);
-
-        return Result<string[]>.Success(permissions);
-
-        #endregion
-    }
-
-    private Result<LoginResponse> IssueLoginResponse(AppUser user, string[] permissions)
-    {
-        #region Issue Login Response
-
-        var claims = new List<Claim>
+        try
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.DisplayName),
-            new(ClaimTypes.Role, user.Role.RoleName)
-        };
-        claims.AddRange(permissions.Select(permission => new Claim("permission", permission)));
-        var tokenResult = tokens.CreateToken(claims);
+            #region Validate the permission check request
 
-        if (tokenResult.IsFailure)
-        {
-            return Result<LoginResponse>.Failure(tokenResult.Message, tokenResult.ErrorCode);
+            if (request.RequiredPermissions is null || request.RequiredPermissions.Any(string.IsNullOrWhiteSpace))
+            {
+                return BadRequest();
+            }
+
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized();
+            }
+
+            #endregion
+
+            #region Evaluate current grants without returning them
+
+            var result = await service.CheckPermissionsAsync(userId, request, cancellationToken);
+            if (result.IsFailure)
+            {
+                logger.LogWarning("CheckPermissionsAsync => Permission check stopped. Reason={Reason}", result.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return Ok(result.Data);
+
+            #endregion
         }
-
-        var response = new LoginResponse(tokenResult.Data!, user.Id, user.DisplayName, user.Role.RoleName, permissions);
-
-        return Result<LoginResponse>.Success(response);
-
-        #endregion
-    }
-
-    [HttpGet("permissions")]
-    public async Task<ActionResult<string[]>> GetPermissionsAsync()
-    {
-        #region Get Permissions
-
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return Unauthorized();
+            logger.LogError(exception, "CheckPermissionsAsync => Permission check failed.");
+            throw;
         }
-
-        return await service.GetPermissionsAsync(userId);
-
-        #endregion
     }
 }

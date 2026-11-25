@@ -36,12 +36,14 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add(new AuthorizeFilter());
+    options.Filters.Add<PermissionFilter>();
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
 });
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuthApiClient>();
-builder.Services.AddTransient<AdminJwtAuthorizationHandler>();
+builder.Services.AddScoped<CurrentUser>();
+builder.Services.AddTransient<TokenSendHandler>();
 
 var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7267";
 
@@ -50,7 +52,7 @@ builder.Services.AddHttpClient(ApiClientBase.ClientName, client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
 })
-.AddHttpMessageHandler<AdminJwtAuthorizationHandler>();
+.AddHttpMessageHandler<TokenSendHandler>();
 
 builder.Services.AddScoped<IBatchApiClient, BatchApiClient>();
 builder.Services.AddScoped<IDeveloperApiClient, DeveloperApiClient>();

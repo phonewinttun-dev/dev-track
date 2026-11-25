@@ -91,10 +91,10 @@ public class ServiceExceptionHandlingTests
     {
         var context = TestDbContextFactory.Create();
         await context.DisposeAsync();
-        var logger = new RecordingLogger<RbacService>();
+        var logger = new RecordingLogger<UserAccessService>();
 
         var thrown = await Assert.ThrowsAsync<ObjectDisposedException>(
-            () => new RbacService(context, logger).LoginAsync("admin", "password"));
+            () => new UserAccessService(context, logger).LoginAsync("admin", "password"));
 
         Assert.Same(thrown, logger.Exception);
         Assert.StartsWith("LoginAsync =>", logger.Message);

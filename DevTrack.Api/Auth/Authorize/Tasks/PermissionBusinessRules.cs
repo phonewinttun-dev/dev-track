@@ -6,7 +6,7 @@ namespace DevTrack.Api.Auth;
 
 public partial class PermissionFilter
 {
-    private static Result<IEnumerable<string>> ReadRequiredPermissions(AuthorizationFilterContext context)
+    private static IEnumerable<string> ReadRequiredPermissions(AuthorizationFilterContext context)
     {
         #region Select the existing endpoint requirements
 
@@ -14,7 +14,7 @@ public partial class PermissionFilter
             .OfType<PermissionAttribute>()
             .Select(attribute => attribute.Permission);
 
-        return Result<IEnumerable<string>>.Success(permissions, "Endpoint permission metadata selected.");
+        return permissions;
 
         #endregion
     }

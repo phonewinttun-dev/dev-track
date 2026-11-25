@@ -37,7 +37,6 @@ public partial class DevTrackDbContext : DbContext
 
             entity.Property(e => e.Feedback).HasMaxLength(500);
             entity.Property(e => e.IsSubmitted).HasDefaultValue(false);
-            entity.Property(e => e.SubmissionDate).HasColumnType("datetime");
 
             entity.HasOne(d => d.Batch).WithMany(p => p.AssignmentSubmissions)
                 .HasForeignKey(d => d.BatchId)
@@ -56,8 +55,7 @@ public partial class DevTrackDbContext : DbContext
             entity.HasIndex(e => new { e.BatchId, e.TrainingDate, e.DeveloperId }).IsUnique();
 
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.Remark).HasMaxLength(500);
             entity.Property(e => e.Status).HasMaxLength(50);
 
@@ -78,8 +76,7 @@ public partial class DevTrackDbContext : DbContext
 
             entity.Property(e => e.BatchName).HasMaxLength(150);
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.DaysPerWeek).HasDefaultValue(2);
             entity.Property(e => e.MentorName).HasMaxLength(150);
             entity.Property(e => e.MinAttendancePercent).HasDefaultValue(80);
@@ -106,8 +103,7 @@ public partial class DevTrackDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__Develope__3214EC07B9DBC095");
 
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.DeveloperCode).HasMaxLength(50);
             entity.Property(e => e.Email).HasMaxLength(150);
             entity.Property(e => e.FullName).HasMaxLength(150);
@@ -119,7 +115,6 @@ public partial class DevTrackDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__LeaveRec__3214EC074BB7C5D7");
 
-            entity.Property(e => e.ApprovedAt).HasColumnType("datetime");
             entity.Property(e => e.ApprovedBy).HasMaxLength(150);
             entity.Property(e => e.Reason).HasMaxLength(500);
 

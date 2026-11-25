@@ -35,12 +35,20 @@ public class AppRolePermission
 
 public partial class DevTrackDbContext
 {
+    public DbSet<AccessSession> AccessSessions => Set<AccessSession>();
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<AppRole> Roles => Set<AppRole>();
     public DbSet<AppPermission> Permissions => Set<AppPermission>();
     public DbSet<AppRolePermission> RolePermissions => Set<AppRolePermission>();
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AccessSession>(entity =>
+        {
+            entity.HasKey(session => session.TokenHash);
+            entity.Property(session => session.TokenHash).HasMaxLength(64).IsUnicode(false);
+            entity.HasOne(session => session.User).WithMany().HasForeignKey(session => session.UserId);
+            entity.HasIndex(session => session.ExpiresAtUtc);
+        });
         modelBuilder.Entity<AppUser>().HasIndex(x => x.Username).IsUnique();
         modelBuilder.Entity<AppUser>().Property(x => x.Username).HasMaxLength(150);
         modelBuilder.Entity<AppRole>().HasIndex(x => x.RoleName).IsUnique();

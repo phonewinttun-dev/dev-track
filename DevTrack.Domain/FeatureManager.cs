@@ -13,7 +13,9 @@ public static class FeatureManager
     {
         #region Access services
 
-        services.AddScoped<RbacService>();
+        services.AddScoped<DatabaseSetup>();
+        services.AddScoped<UserAccessService>();
+        services.AddScoped<SessionService>();
 
         #endregion
 

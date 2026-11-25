@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using DevTrack.Features.Access.Auth;
 using DevTrack.Shared;
 using DevTrack.Shared.Security;
@@ -13,6 +14,11 @@ namespace DevTrack.WebApp.Controllers;
 
 public class AccountController(AuthApiClient authApi, ILogger<AccountController> logger) : Controller
 {
+    private const int SessionNonceSize = 32;
+    private const int SessionLifetimeHours = 8;
+    private const string SessionNonceClaim = "sub";
+    private const string AccessTokenName = "access_token";
+
     [AllowAnonymous]
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
@@ -45,7 +51,6 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
 
             var loginResult = await AuthenticateUserAsync(model, cancellationToken);
 
-
             if (loginResult.IsFailure)
             {
                 logger.LogInformation("Login => Authentication stopped. Reason={Reason}", loginResult.Message);
@@ -54,26 +59,17 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
                 return View(model);
             }
 
-            var user = loginResult.Data!;
+            var loginResponse = loginResult.Data!;
 
-            logger.LogInformation("Login => Authentication succeeded. UserId={UserId}", user.UserId);
+            logger.LogInformation("Login => Authentication succeeded.");
 
             #endregion
 
             #region Establish the session
 
-            var sessionResult = await EstablishSessionAsync(user);
+            await EstablishSessionAsync(loginResponse);
 
-
-            if (sessionResult.IsFailure)
-            {
-                logger.LogInformation("Login => Session creation stopped. Reason={Reason}", sessionResult.Message);
-                ModelState.AddModelError(string.Empty, sessionResult.Message);
-
-                return View(model);
-            }
-
-            logger.LogInformation("Login => Session established. UserId={UserId}", user.UserId);
+            logger.LogInformation("Login => Session established.");
             TempData["WorkflowSuccess"] = "Signed in successfully.";
 
             return RedirectAfterLogin(model.ReturnUrl);
@@ -107,34 +103,26 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
         #endregion
     }
 
-    private async Task<Result> EstablishSessionAsync(LoginResponse user)
+    private async Task EstablishSessionAsync(LoginResponse loginResponse)
     {
         #region Establish Session
 
-        var displayName = user.DisplayName;
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-            new(ClaimTypes.Name, displayName),
-            new(ClaimTypes.Role, user.Role)
-        };
-
-        claims.AddRange(user.Permissions.Select(x => new Claim("permission", x)));
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        // Antiforgery binds forms to this independent session nonce, never to a user ID.
+        var sessionNonce = Convert.ToHexString(RandomNumberGenerator.GetBytes(SessionNonceSize));
+        var identity = new ClaimsIdentity(
+            [new Claim(SessionNonceClaim, sessionNonce)], CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
         var authProperties = new AuthenticationProperties
         {
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8),
+            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(SessionLifetimeHours),
             IsPersistent = false
         };
         authProperties.StoreTokens(new[]
         {
-            new AuthenticationToken { Name = "access_token", Value = user.AccessToken }
+            new AuthenticationToken { Name = AccessTokenName, Value = loginResponse.AccessToken }
         });
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
-
-        return Result.Success("Session established.");
 
         #endregion
     }
@@ -148,7 +136,6 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
         try
         {
             var logoutResult = await EndSessionAsync();
-
 
             if (logoutResult.IsFailure)
             {
@@ -185,6 +172,12 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
     private async Task<Result> EndSessionAsync()
     {
         #region End Session
+
+        var revokeResult = await authApi.LogoutAsync(HttpContext.RequestAborted);
+        if (revokeResult.IsFailure && revokeResult.ErrorCode != AuthErrorCodes.Unauthorized)
+        {
+            return revokeResult;
+        }
 
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 

@@ -1,11 +1,7 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using DevTrack.Api.Auth;
+using System.Security.Claims;
 using DevTrack.Api.Auth.Authorize.Tasks;
 using DevTrack.Features.Access.Auth;
-using DevTrack.Shared.Security;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -14,145 +10,11 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 namespace DevTrack.Domain.Tests;
 
 public class AuthWorkflowTests
 {
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("Cookies")]
-    [InlineData("bearer")]
-    public void Configure_LeavesOtherSchemesUnchanged(string? scheme)
-    {
-        #region Configure an unrelated scheme
-
-        var configuration = new ConfigureJwtBearerOptions(
-            CreateOptions(), NullLogger<ConfigureJwtBearerOptions>.Instance);
-        var options = new JwtBearerOptions();
-        var original = options.TokenValidationParameters;
-
-        configuration.Configure(scheme, options);
-
-        #endregion
-
-        #region Verify the existing no-op behavior
-
-        Assert.Same(original, options.TokenValidationParameters);
-
-        #endregion
-    }
-
-    [Fact]
-    public void Configure_PreservesBearerValidationPolicyAndDefaultOverload()
-    {
-        #region Configure the bearer policy
-
-        var configuration = new ConfigureJwtBearerOptions(
-            CreateOptions(), NullLogger<ConfigureJwtBearerOptions>.Instance);
-        var options = new JwtBearerOptions();
-
-        configuration.Configure(JwtBearerDefaults.AuthenticationScheme, options);
-
-        #endregion
-
-        #region Verify validation settings and signing key
-
-        var policy = options.TokenValidationParameters;
-        Assert.True(policy.ValidateIssuer);
-        Assert.True(policy.ValidateAudience);
-        Assert.True(policy.ValidateIssuerSigningKey);
-        Assert.True(policy.ValidateLifetime);
-        Assert.Equal(AuthTestSettings.Issuer, policy.ValidIssuer);
-        Assert.Equal(AuthTestSettings.Audience, policy.ValidAudience);
-        Assert.Equal(TimeSpan.FromMinutes(1), policy.ClockSkew);
-        var key = Assert.IsType<SymmetricSecurityKey>(policy.IssuerSigningKey);
-        Assert.Equal(Encoding.UTF8.GetBytes(AuthTestSettings.SigningKey), key.Key);
-
-        configuration.Configure(options);
-
-        Assert.Same(policy, options.TokenValidationParameters);
-
-        #endregion
-    }
-
-    [Fact]
-    public void CreateToken_PreservesClaimsAndLifetimeWithoutRepeatedEnumerationOrSensitiveLogs()
-    {
-        #region Create a token from a counted claims sequence
-
-        var logger = new WorkflowLogger<JwtTokenService>();
-        var service = new JwtTokenService(CreateOptions(), logger);
-        var visitedClaims = 0;
-        Claim[] inputClaims =
-        [
-            new(ClaimTypes.NameIdentifier, "user-private-value"),
-            new("permission", "training.read")
-        ];
-        var claims = inputClaims.Select(claim =>
-        {
-            visitedClaims++;
-
-            return claim;
-        });
-
-        var tokenResult = service.CreateToken(claims);
-
-        Assert.True(tokenResult.IsSuccess);
-        Assert.NotNull(tokenResult.Data);
-        var serialized = tokenResult.Data;
-        var token = new JwtSecurityTokenHandler().ReadJwtToken(serialized);
-
-        #endregion
-
-        #region Verify token semantics and diagnostic safety
-
-        Assert.Equal(inputClaims.Length, visitedClaims);
-        Assert.Equal(SecurityAlgorithms.HmacSha256, token.Header.Alg);
-        Assert.Equal(AuthTestSettings.Issuer, token.Issuer);
-        Assert.Equal(AuthTestSettings.Audience, Assert.Single(token.Audiences));
-        Assert.Equal(TimeSpan.FromMinutes(25), token.ValidTo - token.ValidFrom);
-        Assert.Contains(token.Claims, claim => claim.Value == "user-private-value");
-        Assert.Contains(token.Claims, claim => claim.Type == "permission" && claim.Value == "training.read");
-        var logs = string.Join("\n", logger.Messages);
-        Assert.DoesNotContain(AuthTestSettings.SigningKey, logs);
-        Assert.DoesNotContain(serialized, logs);
-        Assert.DoesNotContain("user-private-value", logs);
-        Assert.Contains("NextAction=return token", logs);
-
-        #endregion
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CreateToken_PropagatesOriginalFailureAndDoesNotContinue(bool isCancellation)
-    {
-        #region Fail while the token consumes its claims
-
-        var logger = new WorkflowLogger<JwtTokenService>();
-        var service = new JwtTokenService(CreateOptions(), logger);
-        Exception failure = isCancellation
-            ? new OperationCanceledException()
-            : new InvalidOperationException("Claims enumeration failed.");
-        var claims = new[] { 1 }.Select<int, Claim>(_ => throw failure);
-
-        var thrown = Record.Exception(() => service.CreateToken(claims));
-
-        #endregion
-
-        #region Verify exception identity and skipped serialization
-
-        Assert.Same(failure, thrown);
-        Assert.Equal(isCancellation ? null : failure, logger.Exception);
-        Assert.DoesNotContain(logger.Messages, message => message.Contains("Token serialized."));
-
-        #endregion
-    }
-
     [Theory]
     [InlineData(false, "1", true, typeof(ChallengeResult))]
     [InlineData(true, null, true, typeof(ForbidResult))]
@@ -169,7 +31,7 @@ public class AuthWorkflowTests
         var db = TestDbContextFactory.Create();
         await db.DisposeAsync();
         var logger = new WorkflowLogger<PermissionFilter>();
-        var service = new RbacService(db, NullLogger<RbacService>.Instance);
+        var service = new UserAccessService(db, NullLogger<UserAccessService>.Instance);
         var filter = new PermissionFilter(service, logger);
         var context = CreateAuthorizationContext(isAuthenticated, userId, requiresPermission);
 
@@ -193,7 +55,7 @@ public class AuthWorkflowTests
         var db = TestDbContextFactory.Create();
         await db.DisposeAsync();
         var logger = new WorkflowLogger<PermissionFilter>();
-        var filter = new PermissionFilter(new RbacService(db, NullLogger<RbacService>.Instance), logger);
+        var filter = new PermissionFilter(new UserAccessService(db, NullLogger<UserAccessService>.Instance), logger);
         var context = CreateAuthorizationContext(true, "1", true);
 
         var thrown = await Assert.ThrowsAsync<ObjectDisposedException>(
@@ -206,21 +68,6 @@ public class AuthWorkflowTests
         Assert.Same(thrown, logger.Exception);
         Assert.Null(context.Result);
         Assert.StartsWith("OnAuthorizationAsync =>", logger.Messages[^1]);
-
-        #endregion
-    }
-
-    private static IOptions<JwtOptions> CreateOptions()
-    {
-        #region Provide isolated signing configuration
-
-        return Options.Create(new JwtOptions
-        {
-            Issuer = AuthTestSettings.Issuer,
-            Audience = AuthTestSettings.Audience,
-            SigningKey = AuthTestSettings.SigningKey,
-            ExpiresMinutes = 25
-        });
 
         #endregion
     }
