@@ -1,9 +1,12 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
   <Project Path="DevTrack.Api/DevTrack.Api.csproj" />
   <Project Path="DevTrack.Database/DevTrack.Database.csproj" />
-  <Project Path="DevTrack.Domain/DevTrack.Domain.csproj" />
   <Project Path="DevTrack.Domain.Tests/DevTrack.Domain.Tests.csproj" />
-  <Project Path="DevTrack.Shared/DevTrack.Shared.csproj" />
+  <Project Path="DevTrack.Domain/DevTrack.Domain.csproj" />
   <Project Path="DevTrack.Models/DevTrack.Models.csproj" />
+  <Project Path="DevTrack.Shared/DevTrack.Shared.csproj" />
   <Project Path="DevTrack.WebApp/DevTrack.WebApp.csproj" />
 </Solution>

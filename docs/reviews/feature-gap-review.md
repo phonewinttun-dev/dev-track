@@ -1,6 +1,6 @@
 # DevTrack Feature Gap Review
 
-**Source of truth:** [User Stories.md](User%20Stories.md)  
+**Source of truth:** [User stories](../requirements/user-stories.md)  
 **Scope:** `DevTrack.WebApp` (MVC + IHttpClientFactory), `DevTrack.Api` (HTTP API), `DevTrack.Domain` (services), `DevTrack.Database` (EF entities)  
 **Date:** 2026-05-06
 
@@ -141,4 +141,4 @@ These phases turn gaps into shippable increments. Order assumes you want the exi
 
 ## Conclusion
 
-The codebase delivers a **mentor-oriented MVP**: batches, developer registry, generated calendar, attendance marking, and attendance summary with eligibility bands. **Assignments, leave, developer self-service, strict business rules, and API completeness** are the main gaps relative to [User Stories.md](User%20Stories.md). Start with **Phase 1** to align the API with the WebApp contract, then **Phase 2** for calendar configuration and attendance rule enforcement.
+The codebase delivers a **mentor-oriented MVP**: batches, developer registry, generated calendar, attendance marking, and attendance summary with eligibility bands. **Assignments, leave, developer self-service, strict business rules, and API completeness** are the main gaps relative to [User stories](../requirements/user-stories.md). Start with **Phase 1** to align the API with the WebApp contract, then **Phase 2** for calendar configuration and attendance rule enforcement.

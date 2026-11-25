@@ -1,48 +1,30 @@
 # Web authentication workflows
 
-Existing filenames, namespaces and framework entry points are retained. Auth API
-methods now return typed Results, and application callers inspect those outcomes.
-Forwarding
-lives in `Auth/ForwardToken/`, login in `Auth/Login/`, permission reads in
-`Auth/GetPermissions/` and UI authorization in `Auth/Authorize/`. Every supporting
-task lives in `Tasks/`. Shared HTTP tasks remain with `AuthApiClient` under
-`Auth/Tasks/`; the original client declaration and permission metadata remain at
-their existing owners.
+`Auth/Login/`, `Auth/Me/`, `Auth/Logout/`, and `Auth/ForwardToken/` contain the
+operation workflows and their supporting `Tasks/`. Shared response validation is
+under `Auth/Tasks/`. Private HTTP tasks return responses directly; workflow methods
+return Results for expected HTTP or payload failures. Clients and responses are
+disposed by the workflow that owns them, and cancellation propagates.
 
-```mermaid
-flowchart TD
-    Forward[Forward request] --> Token[Read optional stored token]
-    Token --> Header[Prepare optional bearer header]
-    Header --> Send[Send once and return caller-owned response]
-    API[Call login or permissions API] --> Client[Acquire client and send request]
-    Client --> Status{Response status?}
-    Status -->|401| Unauthorized[Return unauthorized Result]
-    Status -->|Other failure| Failed[Return API failure Result]
-    Status -->|Success| Payload[Read typed payload]
-    Payload --> Value[Return typed Result or invalid-response failure]
-    Page[Authorize page] --> Identity{Authenticated?}
-    Identity -->|No| Challenge[Challenge]
-    Identity -->|Yes| Load[Read metadata and fetch current permissions]
-    Load --> Lookup{Permission Result?}
-    Lookup -->|Other failure| Server[Return server failure without sign-out]
-    Lookup -->|Unauthorized| Session[End expired session]
-    Lookup -->|Success| Check[Check permissions ignoring case]
-    Session --> SignOut[Sign out then challenge]
-    Check --> Allowed{All granted?}
-    Allowed -->|No| Forbid[Forbid]
-    Allowed -->|Yes| Continue[Continue request]
-```
+Login stores only the JWT and an independent antiforgery session nonce in the
+protected cookie. The JWT itself contains only the random `sid` claim.
 
-Missing tokens leave existing headers unchanged. Authenticated pages still fetch
-permissions even without permission metadata. API errors must not become empty
-permissions or ordinary denials. Client and response scopes survive payload
-reading and dispose on all exits; forwarded responses stay owned by the caller.
-Cancellation propagates, the default sign-out scheme stays unchanged, and logs
-exclude token text, passwords, claims and response bodies.
+The global `PermissionFilter` skips anonymous endpoints. For each authenticated
+MVC request, it calls `GET /me` once, validates the profile, and puts it in the
+scoped `CurrentUser` object. This state lasts for one request; it is never added
+to authentication claims or persisted in browser storage. `PermissionAttribute`
+is metadata only, so multiple requirements do not trigger duplicate calls.
 
-Failed Results propagate without being thrown. Optional error codes distinguish
-unauthorized sessions from API failures and invalid payloads. Only unauthorized
-sessions trigger sign-out. Other permission lookup failures become server error
-responses; login failures return to the form with the safe failure reason.
-Unexpected transport/authentication exceptions still log and propagate. Existing
-Result JSON payloads omit the optional error code unless one is supplied.
+The filter checks all endpoint requirements against the current server-returned
+permissions using ordinal case-insensitive matching. The layout displays the
+current display name and role, and views hide unavailable links and edit actions.
+The API still checks current grants independently for every protected operation.
+The WebApp no longer calls the permission-decision endpoint.
+
+A `/me` HTTP 401 signs out the MVC cookie and challenges. Other HTTP errors,
+incomplete profiles, or invalid JSON produce a server error without sign-out or
+a fake denial. Unexpected transport errors are logged and rethrown. Logs exclude
+profile values, permission lists, JWTs, and response bodies.
+
+Profile and grant changes appear on the next page request without issuing another
+token. Logout still revokes the API session before clearing the cookie.
