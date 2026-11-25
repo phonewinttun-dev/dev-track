@@ -63,6 +63,7 @@ public class WebLoginTests
 
             var dashboard = await client.GetStringAsync("/");
             Assert.Equal(1, counter.MeCalls);
+            Assert.Contains($"Welcome back, {username}.", dashboard);
             var verificationToken = GetFormToken(dashboard);
             Assert.Equal(canWrite, dashboard.Contains("href=\"/Batches/Create\"", StringComparison.Ordinal));
 
