@@ -37,8 +37,9 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
 
     [AllowAnonymous]
     [HttpPost]
+    [ActionName("Login")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginViewModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> LoginAsync(LoginViewModel model, CancellationToken cancellationToken)
     {
         try
         {
@@ -53,7 +54,7 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
 
             if (loginResult.IsFailure)
             {
-                logger.LogInformation("Login => Authentication stopped. Reason={Reason}", loginResult.Message);
+                logger.LogInformation("LoginAsync => Authentication stopped. Reason={Reason}", loginResult.Message);
                 ModelState.AddModelError(string.Empty, loginResult.Message);
 
                 return View(model);
@@ -61,7 +62,7 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
 
             var loginResponse = loginResult.Data!;
 
-            logger.LogInformation("Login => Authentication succeeded.");
+            logger.LogInformation("LoginAsync => Authentication succeeded.");
 
             #endregion
 
@@ -69,7 +70,7 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
 
             await EstablishSessionAsync(loginResponse);
 
-            logger.LogInformation("Login => Session established.");
+            logger.LogInformation("LoginAsync => Session established.");
             TempData["WorkflowSuccess"] = "Signed in successfully.";
 
             return RedirectAfterLogin(model.ReturnUrl);
@@ -78,7 +79,7 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger.LogError(exception, "Login => Operation failed.");
+            logger.LogError(exception, "LoginAsync => Operation failed.");
             throw;
         }
     }
@@ -128,8 +129,9 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
     }
 
     [HttpPost]
+    [ActionName("Logout")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> LogoutAsync()
     {
         #region Logout
 
@@ -139,19 +141,19 @@ public class AccountController(AuthApiClient authApi, ILogger<AccountController>
 
             if (logoutResult.IsFailure)
             {
-                logger.LogInformation("Logout => Sign out stopped. Reason={Reason}", logoutResult.Message);
+                logger.LogInformation("LogoutAsync => Sign out stopped. Reason={Reason}", logoutResult.Message);
 
                 return View("WorkflowFailure", logoutResult.Message);
             }
 
-            logger.LogInformation("Logout => Sign out succeeded.");
+            logger.LogInformation("LogoutAsync => Sign out succeeded.");
             TempData["WorkflowSuccess"] = logoutResult.Message;
 
             return RedirectToAction(nameof(Login));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger.LogError(exception, "Logout => Operation failed.");
+            logger.LogError(exception, "LogoutAsync => Operation failed.");
             throw;
         }
 

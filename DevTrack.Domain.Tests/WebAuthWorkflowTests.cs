@@ -443,7 +443,7 @@ public class WebAuthWorkflowTests
             Password = "private-password"
         };
 
-        var response = await controller.Login(model, CancellationToken.None);
+        var response = await controller.LoginAsync(model, CancellationToken.None);
 
         #endregion
 

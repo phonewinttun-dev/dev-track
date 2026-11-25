@@ -32,3 +32,6 @@ token. Logout still revokes the API session before clearing the cookie.
 The authentication guard and framework sign-out call stay directly in the
 permission workflow; they do not need Result wrappers or forwarding-only task
 files.
+
+Async login/logout methods retain the public MVC action names `Login`
+and `Logout` explicitly, so existing forms and URLs are unchanged.
